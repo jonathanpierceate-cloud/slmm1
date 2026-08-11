@@ -125,7 +125,7 @@ def init_db():
                     FOREIGN KEY(powder_code) REFERENCES powders(powder_code)
                 )''')
 
-    # جدول جدید: پودرهای خریداری شده از نورا (ساده بدون آزمایش)
+    # جدول پودرهای خریداری شده از نورا (ساده بدون آزمایش)
     c.execute('''CREATE TABLE IF NOT EXISTS nora_powders (
                     powder_code TEXT PRIMARY KEY,
                     material TEXT,
@@ -376,15 +376,20 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
     with sub_tab2:
         st.subheader("♻️ مدیریت و ثبت پودرهای بازیافت شده")
         
-        powders_list = powders_df['powder_code'].tolist() if not powders_df.empty else []
+        # تهیه لیست ترکیبی شامل پودرهای اولیه و پودرهای نورا برای پودر مبدا
+        p_initial_list = [f"{code} [اولیه]" for code in powders_df['powder_code'].tolist()] if not powders_df.empty else []
+        p_nora_list = [f"{code} [نورا]" for code in nora_df['powder_code'].tolist()] if not nora_df.empty else []
+        combined_source_powders = p_initial_list + p_nora_list
         
-        if not powders_list:
-            st.warning("ابتدا باید حداقل یک ظرف پودر اولیه ثبت کرده باشید.")
+        if not combined_source_powders:
+            st.warning("ابتدا باید حداقل یک ظرف پودر اولیه یا پودر نورا ثبت کرده باشید.")
         else:
             with st.form("recycled_powder_form"):
                 rc1, rc2 = st.columns(2)
                 with rc1:
-                    selected_powder_code = st.selectbox("شماره/کد ظرف پودر مبدا", powders_list)
+                    selected_source = st.selectbox("شماره/کد ظرف پودر مبدا (خریداری‌شده اولیه / نورا)", combined_source_powders)
+                    # استخراج کد پودر بدون برچسب توضیحی
+                    clean_source_code = selected_source.split(" [")[0] if selected_source else ""
                     recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)")
                     input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=5000.0)
                 with rc2:
@@ -400,7 +405,7 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
                     c.execute("""INSERT INTO recycled_powders 
                                  (powder_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, date, notes)
                                  VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                              (selected_powder_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, rec_date, rec_notes))
+                              (clean_source_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, rec_date, rec_notes))
                     conn.commit()
                     st.success("اطلاعات پودر بازیافتی با موفقیت ثبت شد.")
                     st.rerun()
