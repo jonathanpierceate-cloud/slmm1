@@ -124,6 +124,14 @@ def init_db():
                     notes TEXT,
                     FOREIGN KEY(powder_code) REFERENCES powders(powder_code)
                 )''')
+
+    # جدول جدید: پودرهای خریداری شده از نورا (ساده بدون آزمایش)
+    c.execute('''CREATE TABLE IF NOT EXISTS nora_powders (
+                    powder_code TEXT PRIMARY KEY,
+                    material TEXT,
+                    weight_g REAL,
+                    date TEXT
+                )''')
     
     # جدول فرم‌های تولید
     c.execute('''CREATE TABLE IF NOT EXISTS production (
@@ -276,6 +284,9 @@ if choice == "🔍 داشبورد و جستجوی جامع":
             with tab2:
                 powder_code = prod_df['powder_code'].values[0]
                 powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code,))
+                if powder_df.empty:
+                    powder_df = pd.read_sql_query("SELECT * FROM nora_powders WHERE powder_code=?", conn, params=(powder_code,))
+                
                 if not powder_df.empty:
                     st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code}`")
                     st.table(powder_df.T)
@@ -306,8 +317,9 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
     
     conn = get_db_connection()
     powders_df = pd.read_sql_query("SELECT * FROM powders", conn)
+    nora_df = pd.read_sql_query("SELECT * FROM nora_powders", conn)
     
-    sub_tab1, sub_tab2 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده"])
+    sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده", "🏭 ۳- پودرهای خریداری شده از نورا"])
     
     with sub_tab1:
         with st.expander("➕ ثبت / ویرایش پودر جدید", expanded=True):
@@ -412,6 +424,45 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         else:
             st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
 
+    with sub_tab3:
+        st.subheader("🏭 پودرهای خریداری شده از نورا (ثبت سریع)")
+        
+        with st.form("nora_powder_form"):
+            nc1, nc2 = st.columns(2)
+            with nc1:
+                nora_powder_code = st.text_input("کد/شماره ظرف پودر نورا (مانند: NORA-PWD-01)")
+                nora_material = st.selectbox("نوع متریال / جنس پودر", ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"], key="nora_mat")
+            with nc2:
+                nora_weight_g = st.number_input("مقدار / وزن پودر (گرم)", min_value=0.0, value=10000.0, key="nora_wt")
+                nora_date = st.date_input("تاریخ ورود/تحویل", key="nora_dt").strftime("%Y-%m-%d")
+                
+            nora_submit = st.form_submit_button("💾 ثبت پودر نورا در بایگانی")
+            if nora_submit:
+                if nora_powder_code:
+                    c = conn.cursor()
+                    c.execute("""INSERT OR REPLACE INTO nora_powders 
+                                 (powder_code, material, weight_g, date)
+                                 VALUES (?, ?, ?, ?)""",
+                              (nora_powder_code, nora_material, nora_weight_g, nora_date))
+                    conn.commit()
+                    st.success(f"پودر نورا با کد {nora_powder_code} با موفقیت ثبت شد.")
+                    st.rerun()
+                else:
+                    st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
+
+        st.markdown("---")
+        st.subheader("📊 جدول پودرهای خریداری شده از نورا")
+        if not nora_df.empty:
+            disp_nora = nora_df.rename(columns={
+                'powder_code': 'شماره ظرف پودر نورا',
+                'material': 'نوع متریال',
+                'weight_g': 'مقدار (گرم)',
+                'date': 'تاریخ ورود'
+            })
+            st.table(disp_nora)
+        else:
+            st.info("هنوز پودری از نورا ثبت نشده است.")
+
     conn.close()
 
 # ---------------------------------------------------------
@@ -422,8 +473,10 @@ elif choice == "🏭 ۲. فرم ثبت تولید":
     
     conn = get_db_connection()
     powders_list = pd.read_sql_query("SELECT powder_code FROM powders", conn)['powder_code'].tolist()
+    nora_powders_list = pd.read_sql_query("SELECT powder_code FROM nora_powders", conn)['powder_code'].tolist()
+    all_powders = list(set(powders_list + nora_powders_list))
     
-    if not powders_list:
+    if not all_powders:
         st.warning("جهت ثبت فرم تولید، ابتدا باید حداقل یک پودر در بخش ۱ ثبت شده باشد.")
     else:
         with st.form("prod_form"):
@@ -432,7 +485,7 @@ elif choice == "🏭 ۲. فرم ثبت تولید":
                 part_code = st.text_input("کد قطعه (شناسه یکتا)")
                 part_name = st.text_input("نام قطعه")
             with col2:
-                powder_code = st.selectbox("شماره ظرف پودر مصرفی", powders_list)
+                powder_code = st.selectbox("شماره ظرف پودر مصرفی", all_powders)
                 machine_model = st.selectbox("مدل دستگاه", ["M120", "M300", "سایر"])
             with col3:
                 quantity = st.number_input("تعداد روی صفحه ساخت", min_value=1, value=1)
@@ -662,11 +715,12 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     conn = get_db_connection()
     
     target_table = st.selectbox("انتخاب جدول جهت مشاهده، دانلود Excel یا حذف رکورد:", 
-                                ["آنالیز پودر اولیه (powders)", "پودرهای بازیافت شده (recycled_powders)", "رکوردهای تولید (production)", "کنترل کیفیت (qc)", "محاسبه هزینه (cost_calculator)"])
+                                ["آنالیز پودر اولیه (powders)", "پودرهای بازیافت شده (recycled_powders)", "پودرهای خریداری شده از نورا (nora_powders)", "رکوردهای تولید (production)", "کنترل کیفیت (qc)", "محاسبه هزینه (cost_calculator)"])
     
     table_map = {
         "آنالیز پودر اولیه (powders)": ("powders", "powder_code"),
         "پودرهای بازیافت شده (recycled_powders)": ("recycled_powders", "id"),
+        "پودرهای خریداری شده از نورا (nora_powders)": ("nora_powders", "powder_code"),
         "رکوردهای تولید (production)": ("production", "part_code"),
         "کنترل کیفیت (qc)": ("qc", "part_code"),
         "محاسبه هزینه (cost_calculator)": ("cost_calculator", "part_code")
@@ -682,7 +736,7 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     # دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی
     farsi_headers_map = {
         'powder_code': 'شماره ظرف پودر',
-        'material': 'جنس پودر',
+        'material': 'جنس / نوع متریال پودر',
         'weight_g': 'وزن پودر (گرم)',
         'date': 'تاریخ ثبت',
         'id': 'شناسه',
