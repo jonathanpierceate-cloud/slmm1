@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی بدون تداخل با جداول + سایدبار سرمه‌ای + کارت‌های خوانا ---
+# --- استایل اختصاصی: اصلاح پس‌زمینه و رنگ متن منوی کشویی سایدبار ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -26,25 +26,40 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. اعمال فونت B Nazanin و راست‌چین‌سازی متون عمومی و فرم‌ها */
+    /* ۱. اعمال فونت B Nazanin و راست‌چین‌سازی متون عمومی */
     html, body, p, h1, h2, h3, h4, h5, h6, input, button, select {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl;
         text-align: right;
     }
 
-    /* ۲. سایدبار سرمه‌ای و خوانا */
+    /* ۲. تنظیم سایدبار سرمه‌ای */
     [data-testid="stSidebar"] {
         background-color: #1a2536 !important;
         direction: rtl;
         text-align: right;
         border-left: 1px solid #2c3e50;
     }
-    [data-testid="stSidebar"] * {
+
+    /* ۳. اصلاح دقیق جعبه‌های انتخاب (Selectbox) در سایدبار جهت جلوگیری از سفید شدن متن در پس‌زمینه سفید */
+    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        border: 1px solid #334155 !important;
+        border-radius: 8px !important;
+    }
+
+    [data-testid="stSidebar"] div[data-baseweb="select"] span {
+        color: #ffffff !important;
+        font-weight: bold !important;
+    }
+
+    /* اصلاح رنگ عنوان‌ها و لیبل‌ها در سایدبار */
+    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #f8f9fa !important;
     }
 
-    /* ۳. کارت‌های آمار و شاخص‌ها (Dark Mode خوانا) */
+    /* ۴. کارت‌های آمار و شاخص‌ها (Dark Mode خوانا) */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -63,7 +78,7 @@ st.markdown("""
         font-size: 1.6rem !important;
     }
 
-    /* ۴. استایل دکمه اصلی */
+    /* ۵. استایل دکمه اصلی */
     .stButton>button {
         width: 100%;
         background-color: #2563eb !important;
@@ -80,7 +95,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
     }
 
-    /* ۵. آکاردئون‌ها */
+    /* ۶. آکاردئون‌ها */
     .streamlit-expanderHeader {
         background-color: #1e293b !important;
         color: #f8f9fa !important;
