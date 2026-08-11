@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی، حل تداخل Dark Mode، تم آبی سایدبار و اصلاح کامل جداول ---
+# --- استایل اختصاصی: جداول چپ‌چین استاندارد + سایدبار سرمه‌ای + کارت‌های دارک خوانا ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -26,14 +26,27 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. اعمال فونت B Nazanin و راست‌چین‌سازی کلی */
+    /* ۱. اعمال فونت B Nazanin و راست‌چین‌سازی متون عمومی و فرم‌ها */
     html, body, [class*="css"], div, span, p, h1, h2, h3, h4, h5, h6, input, button, select {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
     }
 
-    /* ۲. اصلاح سایدبار (تغییر پس‌زمینه سفید به رنگ آبی/سرمه‌ای شکیل) */
+    /* ۲. تنظیم چپ‌چین استاندارد جداول (LTR) برای جلوگیری از به‌هم‌ریختگی متون انگلیسی و عددی */
+    [data-testid="stDataFrame"] {
+        direction: ltr !important;
+        border: 1px solid #3f4a5a !important;
+        border-radius: 8px !important;
+        background-color: #1e293b !important;
+    }
+    
+    [data-testid="stDataFrame"] div[role="grid"] {
+        direction: ltr !important;
+        text-align: left !important;
+    }
+
+    /* ۳. سایدبار سرمه‌ای و خوانا */
     [data-testid="stSidebar"] {
         background-color: #1a2536 !important;
         direction: rtl !important;
@@ -44,15 +57,7 @@ st.markdown("""
         color: #f8f9fa !important;
     }
 
-    /* ۳. اصلاح جداول و بایگانی (جلوگیری از هاید شدن و قطع متون) */
-    [data-testid="stDataFrame"] {
-        direction: rtl !important;
-        border: 1px solid #3f4a5a !important;
-        border-radius: 8px !important;
-        background-color: #1e293b !important;
-    }
-
-    /* ۴. اصلاح کارت‌های آمار و شاخص‌ها (حل مشکل متون سفید روی پس‌زمینه سفید) */
+    /* ۴. کارت‌های آمار و شاخص‌ها (Dark Mode خوانا) */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -71,7 +76,7 @@ st.markdown("""
         font-size: 1.6rem !important;
     }
 
-    /* ۵. زیباسازی دکمه اصلی */
+    /* ۵. دکمه اصلی */
     .stButton>button {
         width: 100%;
         background-color: #2563eb !important;
@@ -88,7 +93,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
     }
 
-    /* ۶. زیباسازی آکاردئون‌ها */
+    /* ۶. آکاردئون‌ها */
     .streamlit-expanderHeader {
         background-color: #1e293b !important;
         color: #f8f9fa !important;
@@ -114,7 +119,7 @@ def init_db():
                     checklist_json TEXT
                 )''')
     
-    # جدول جدید: پودرهای بازیافت شده
+    # جدول پودرهای بازیافت شده
     c.execute('''CREATE TABLE IF NOT EXISTS recycled_powders (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     powder_code TEXT,
@@ -327,10 +332,10 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         st.subheader("📂 جدول پودرهای اولیه خریداری شده")
         if not powders_df.empty:
             disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns={
-                'powder_code': 'شماره ظرف پودر',
-                'material': 'جنس پودر',
-                'weight_g': 'وزن پودر (گرم)',
-                'date': 'تاریخ ورود'
+                'powder_code': 'Powder Code / شماره ظرف پودر',
+                'material': 'Material / جنس',
+                'weight_g': 'Weight (g) / وزن',
+                'date': 'Date / تاریخ'
             })
             st.dataframe(disp_powders, use_container_width=True)
         else:
@@ -374,14 +379,14 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         
         if not recycled_df.empty:
             display_recycled_df = recycled_df.rename(columns={
-                'id': 'شناسه',
-                'powder_code': 'شماره ظرف پودر',
-                'recycled_batch_code': 'شناسه بازیافت',
-                'input_powder_g': 'پودر ورودی به دستگاه (g)',
-                'unrecyclable_powder_g': 'پودر غیر قابل بازیافت (g)',
-                'recycled_powder_g': 'پودر بازیافت شده (g)',
-                'date': 'تاریخ',
-                'notes': 'توضیحات'
+                'id': 'ID',
+                'powder_code': 'Powder Code',
+                'recycled_batch_code': 'Recycled Batch Code',
+                'input_powder_g': 'Input Powder (g)',
+                'unrecyclable_powder_g': 'Unrecyclable Powder (g)',
+                'recycled_powder_g': 'Recycled Powder (g)',
+                'date': 'Date',
+                'notes': 'Notes / توضیحات'
             })
             st.dataframe(display_recycled_df, use_container_width=True)
         else:
@@ -629,7 +634,7 @@ elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۶. خروجی و گزارش‌گیری اکسل (با ترجمه و راست‌چین‌سازی کامل فارسی)
+# ۶. خروجی و گزارش‌گیری اکسل (با ساختار چپ‌چین استاندارد جداول)
 # ---------------------------------------------------------
 elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     st.header("📂 بایگانی اطلاعات و خروجی گزارش‌ها")
@@ -651,21 +656,10 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
     
     if not df.empty:
-        # دیکشنری نگاشت سربرگ‌های انگلیسی به فارسی جهت بایگانی کاملا خوانا
-        farsi_headers = {
-            'powder_code': 'شماره ظرف پودر', 'material': 'جنس پودر', 'weight_g': 'وزن (گرم)', 'date': 'تاریخ',
-            'part_code': 'کد قطعه', 'part_name': 'نام قطعه', 'quantity': 'تعداد', 'machine_model': 'دستگاه',
-            'build_time_hrs': 'زمان ساخت (ساعت)', 'input_powder_g': 'پودر ورودی (g)', 'waste_powder_g': 'پودر ضایعات (g)',
-            'final_part_g': 'وزن قطعه نهایی (g)', 'qc_inspector': 'بازرس QC', 'final_price': 'قیمت نهایی (ریال)',
-            'recycled_batch_code': 'شناسه بازیافت', 'unrecyclable_powder_g': 'پودر غیر قابل بازیافت (g)',
-            'recycled_powder_g': 'پودر بازیافت شده (g)', 'notes': 'توضیحات'
-        }
-        
-        display_df = df.rename(columns=farsi_headers)
-        st.dataframe(display_df, use_container_width=True)
+        st.dataframe(df, use_container_width=True)
         
         excel_filename = f"{selected_tbl}_export.xlsx"
-        display_df.to_excel(excel_filename, index=False)
+        df.to_excel(excel_filename, index=False)
         with open(excel_filename, "rb") as f:
             st.download_button(
                 label="📥 دانلود فایل اکسل جدول انتخابی",
