@@ -5,7 +5,7 @@ import json
 from datetime import datetime
 import os
 
-# تنظیمات اولیه صفحه Streamlit + آیکون تب مرورگر (Favicon)
+# تنظیمات اولیه صفحه Streamlit
 st.set_page_config(
     page_title="سامانه مدیریت و بایگانی ساخت افزایشی (SLM)",
     page_icon="logo.png" if os.path.exists("logo.png") else "⚙️",
@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: اصلاح کامل رفتار سایدبار در حالت بسته (Collapsed) و فونت‌ها ---
+# --- استایل تمیز و بدون تداخل با انیمیشن سایدبار ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -27,72 +27,37 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. اعمال فونت B Nazanin، راست‌چین‌سازی و افزایش سایز فونت عمومی */
-    html, body, p, h1, h2, h3, h4, h5, h6, input, button, select, label {
+    /* اعمال فونت و راست‌چین‌سازی بدون دست‌کاری لایه‌های سازنده سایدبار */
+    html, body, .stApp {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
-        direction: rtl;
-        text-align: right;
     }
 
-    /* افزایش سایز متون عمومی و عناوین */
-    p, span, label, input, select {
+    p, span, label, input, select, button {
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         font-size: 1.25rem !important;
     }
-    h1 { font-size: 2.3rem !important; }
-    h2 { font-size: 1.9rem !important; }
-    h3 { font-size: 1.6rem !important; }
+    
+    h1 { font-size: 2.3rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
+    h2 { font-size: 1.9rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
+    h3 { font-size: 1.6rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
 
-    /* ۲. اصلاح سایدبار و جلوگیری از به هم خوردن layout هنگام بستن آن */
-    [data-testid="stSidebar"] {
-        background-color: #1a2536 !important;
-        border-left: 1px solid #2c3e50;
-    }
-
-    [data-testid="stSidebarContent"] {
-        direction: rtl;
-        text-align: right;
-    }
-
-    /* ۳. اصلاح جعبه‌های انتخاب (Selectbox) در سایدبار */
-    [data-testid="stSidebar"] div[data-baseweb="select"] > div {
-        background-color: #1e293b !important;
-        color: #ffffff !important;
-        border: 1px solid #334155 !important;
-        border-radius: 8px !important;
-    }
-
-    [data-testid="stSidebar"] div[data-baseweb="select"] span {
-        color: #ffffff !important;
-        font-weight: bold !important;
-        font-size: 1.2rem !important;
-    }
-
-    [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
-        color: #f8f9fa !important;
-        font-size: 1.3rem !important;
-        font-weight: bold !important;
-    }
-
-    /* ۴. کارت‌های آمار و شاخص‌ها با فونت درشت */
+    /* کارت‌های آمار و شاخص‌ها */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
         border-radius: 10px !important;
         padding: 15px !important;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
     }
     [data-testid="stMetricLabel"] > div {
         color: #94a3b8 !important;
-        font-weight: bold !important;
         font-size: 1.2rem !important;
     }
     [data-testid="stMetricValue"] > div {
         color: #38bdf8 !important;
-        font-weight: bold !important;
         font-size: 1.8rem !important;
     }
 
-    /* ۵. استایل دکمه‌ها */
+    /* دکمه‌های اصلی */
     .stButton>button {
         width: 100%;
         background-color: #2563eb !important;
@@ -102,23 +67,8 @@ st.markdown("""
         font-size: 1.3rem !important;
         padding: 10px 20px !important;
         border: none !important;
-        transition: all 0.3s ease !important;
-    }
-    .stButton>button:hover {
-        background-color: #1d4ed8 !important;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
     }
 
-    /* ۶. آکاردئون‌ها */
-    .streamlit-expanderHeader {
-        background-color: #1e293b !important;
-        color: #f8f9fa !important;
-        border-radius: 6px !important;
-        border: 1px solid #334155 !important;
-        font-size: 1.3rem !important;
-    }
-
-    /* ۷. افزایش سایز فونت جداول */
     table {
         font-size: 1.15rem !important;
     }
