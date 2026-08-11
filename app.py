@@ -3,11 +3,12 @@ import pandas as pd
 import sqlite3
 import json
 from datetime import datetime
+import os
 
-# تنظیمات اولیه صفحه Streamlit
+# تنظیمات اولیه صفحه Streamlit + آیکون تب مرورگر (Favicon)
 st.set_page_config(
     page_title="سامانه مدیریت و بایگانی ساخت افزایشی (SLM)",
-    page_icon="⚙️",
+    page_icon="logo.png" if os.path.exists("logo.png") else "⚙️",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -233,8 +234,12 @@ init_db()
 def get_db_connection():
     return sqlite3.connect(DB_NAME)
 
+# --- نمایش لوگو در سایدبار ---
+if os.path.exists("logo.png"):
+    st.sidebar.image("logo.png", width=140)
+
 # --- منوی اصلی وب اپلیکیشن ---
-st.title("⚙️ سامانه مدیریت و بایگانی ساخت افزایشی (SLM)")
+st.title("سامانه مدیریت و بایگانی ساخت افزایشی (SLM)")
 st.caption("سیستم یکپارچه متصل‌کننده فرم‌های آنالیز پودر، تولید، کنترل کیفیت و برآورد قیمت")
 
 menu = [
@@ -252,12 +257,35 @@ choice = st.sidebar.selectbox("📋 منوی دسترسی بخش‌ها", menu)
 # ۱. داشبورد و جستجوی جامع
 # ---------------------------------------------------------
 if choice == "🔍 داشبورد و جستجوی جامع":
-    st.header("🔍 استعلام و بایگانی کامل قطعه")
+    header_col1, header_col2 = st.columns([5, 1])
+    with header_col1:
+        st.header("🔍 داشبورد مدیریتی و استعلام قطعات")
+    with header_col2:
+        if os.path.exists("logo.png"):
+            st.image("logo.png", width=110)
     
-    search_code = st.text_input("کد قطعه را جهت جستجو وارد کنید:")
+    conn = get_db_connection()
+    all_parts_df = pd.read_sql_query("SELECT part_code, part_name, powder_code, machine_model, quantity, date FROM production", conn)
+    
+    st.subheader("📋 لیست کلی تمامی قطعات ثبت‌شده")
+    if not all_parts_df.empty:
+        disp_all_parts = all_parts_df.rename(columns={
+            'part_code': 'کد قطعه',
+            'part_name': 'نام قطعه',
+            'powder_code': 'شماره ظرف پودر مصرفی',
+            'machine_model': 'مدل دستگاه',
+            'quantity': 'تعداد روی صفحه',
+            'date': 'تاریخ ساخت'
+        })
+        st.table(disp_all_parts)
+    else:
+        st.info("هنوز هیچ قطعه‌ای در سامانه ثبت نشده است.")
+    
+    st.markdown("---")
+    st.subheader("🔎 جستجوی پرونده جامع قطعه")
+    search_code = st.text_input("کد قطعه را جهت استعلام کامل وارد کنید:")
     
     if search_code:
-        conn = get_db_connection()
         prod_df = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(search_code,))
         qc_df = pd.read_sql_query("SELECT * FROM qc WHERE part_code=?", conn, params=(search_code,))
         cost_df = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(search_code,))
@@ -294,7 +322,7 @@ if choice == "🔍 داشبورد و جستجوی جامع":
                     st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
         else:
             st.error("قطعه‌ای با این کد یافت نشد.")
-        conn.close()
+    conn.close()
 
 # ---------------------------------------------------------
 # ۲. آنالیز و بایگانی پودر
