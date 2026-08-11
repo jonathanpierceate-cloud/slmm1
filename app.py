@@ -96,6 +96,68 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی جهت ترانسپوز دقیق در داشبورد
+FARSI_HEADERS_MAP = {
+    'powder_code': 'شماره ظرف پودر',
+    'material': 'جنس / نوع متریال پودر',
+    'weight_g': 'وزن پودر (گرم)',
+    'date': 'تاریخ ثبت',
+    'id': 'شناسه',
+    'recycled_batch_code': 'کد پارت بازیافت',
+    'input_powder_g': 'پودر ورودی به دستگاه (گرم)',
+    'unrecyclable_powder_g': 'پودر غیرقابل بازیافت (گرم)',
+    'recycled_powder_g': 'پودر بازیافتی قابل استفاده (گرم)',
+    'notes': 'توضیحات و ملاحظات',
+    'part_code': 'کد/شناسه قطعه',
+    'part_name': 'نام قطعه',
+    'quantity': 'تعداد روی صفحه',
+    'machine_model': 'مدل دستگاه',
+    'build_time_hrs': 'زمان تولید (ساعت)',
+    'downtime_hrs': 'زمان توقف (ساعت)',
+    'start_date': 'تاریخ شروع',
+    'start_time': 'ساعت شروع',
+    'end_date': 'تاریخ پایان',
+    'end_time': 'ساعت پایان',
+    'setup_time_hrs': 'زمان آماده‌سازی (ساعت)',
+    'cleaning_time_hrs': 'زمان تمیزکاری (ساعت)',
+    'waste_powder_g': 'پودر غیرقابل بازیافت (گرم)',
+    'part_with_support_g': 'وزن با ساپورت (گرم)',
+    'final_part_g': 'وزن قطعه نهایی (گرم)',
+    'filter_percentage': 'درصد فیلتر دستگاه (%)',
+    'build_plate_code': 'کد صفحه ساخت',
+    'build_plate_init_wt_g': 'وزن اولیه صفحه ساخت (گرم)',
+    'build_plate_post_wt_g': 'وزن صفحه ساخت بعد پرداخت (گرم)',
+    'engraving_qty': 'تعداد حکاکی لیزر',
+    'delivery_date': 'تاریخ تحویل',
+    'qc_inspector': 'بازرس کنترل کیفیت',
+    'qc_engineer': 'مسئول مهندسی کیفیت',
+    'qa_manager': 'مدیر تضمین کیفیت',
+    'powder_type': 'نوع پودر فلزی',
+    'volume_cm3': 'حجم قطعه (cm3)',
+    'net_weight_g': 'وزن خالص (گرم)',
+    'support_volume_cm3': 'حجم ساپورت (cm3)',
+    'support_weight_g': 'وزن ساپورت (گرم)',
+    'machine_type': 'نوع دستگاه',
+    'parts_on_plate': 'تعداد قطعات روی صفحه',
+    'print_time_hrs': 'زمان چاپ (ساعت)',
+    'design_time_hrs': 'زمان طراحی (ساعت)',
+    'post_process_time_hrs': 'زمان پرداخت (ساعت)',
+    'overhead_pct': 'ضریب سربار (%)',
+    'powder_cost_total': 'هزینه پودر (ریال)',
+    'argon_cost_total': 'هزینه گاز آرگون (ریال)',
+    'depreciation_cost_total': 'هزینه استهلاک دستگاه (ریال)',
+    'power_cost_total': 'هزینه برق (ریال)',
+    'engineering_cost_total': 'هزینه طراحی/مهندسی (ریال)',
+    'operator_cost_total': 'هزینه اپراتور (ریال)',
+    'post_process_cost_total': 'هزینه پرداخت‌کاری (ریال)',
+    'qc_cost_total': 'هزینه کنترل کیفیت (ریال)',
+    'utility_ventilation': 'هزینه تهویه (ریال)',
+    'utility_chiller': 'هزینه چیلر (ریال)',
+    'total_production_cost': 'بهای تمام شده کل (ریال)',
+    'overhead_cost': 'مبلغ سربار (ریال)',
+    'final_price': 'قیمت نهایی قابل ارائه به مشتری (ریال)'
+}
+
 # --- مدیریت پایگاه داده SQLite ---
 DB_NAME = "slm_management.db"
 
@@ -125,7 +187,7 @@ def init_db():
                     FOREIGN KEY(powder_code) REFERENCES powders(powder_code)
                 )''')
 
-    # جدول پودرهای خریداری شده از نورا (ساده بدون آزمایش)
+    # جدول پودرهای خریداری شده از نورا
     c.execute('''CREATE TABLE IF NOT EXISTS nora_powders (
                     powder_code TEXT PRIMARY KEY,
                     material TEXT,
@@ -277,9 +339,14 @@ if choice == "🔍 داشبورد و جستجوی جامع":
             
             tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر", "🔬 کنترل کیفیت (QC)", "💰 برآورد مالی"])
             
+            json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
+            
             with tab1:
                 st.subheader("مشخصات فنی و فرآیند ساخت")
-                st.table(prod_df.T)
+                clean_prod = prod_df.drop(columns=[c for c in json_cols_to_drop if c in prod_df.columns])
+                disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP).T
+                disp_prod.columns = ["مقدار / مقدار ثبت شده"]
+                st.table(disp_prod)
                 
             with tab2:
                 powder_code = prod_df['powder_code'].values[0]
@@ -289,19 +356,27 @@ if choice == "🔍 داشبورد و جستجوی جامع":
                 
                 if not powder_df.empty:
                     st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code}`")
-                    st.table(powder_df.T)
+                    clean_powder = powder_df.drop(columns=[c for c in json_cols_to_drop if c in powder_df.columns])
+                    disp_powder = clean_powder.rename(columns=FARSI_HEADERS_MAP).T
+                    disp_powder.columns = ["مشخصات پودر"]
+                    st.table(disp_powder)
                 else:
                     st.warning("اطلاعات پودر متناظر یافت نشد.")
                     
             with tab3:
                 if not qc_df.empty:
-                    st.table(qc_df.T)
+                    clean_qc = qc_df.drop(columns=[c for c in json_cols_to_drop if c in qc_df.columns])
+                    disp_qc = clean_qc.rename(columns=FARSI_HEADERS_MAP).T
+                    disp_qc.columns = ["اطلاعات ارزیابی کیفیت"]
+                    st.table(disp_qc)
                 else:
                     st.info("فرم کنترل کیفیت برای این قطعه هنوز ثبت نشده است.")
                     
             with tab4:
                 if not cost_df.empty:
-                    st.table(cost_df.T)
+                    disp_cost = cost_df.rename(columns=FARSI_HEADERS_MAP).T
+                    disp_cost.columns = ["جزئیات مالی و برآورد هزینه"]
+                    st.table(disp_cost)
                     st.metric("قیمت نهایی فروش (ریال)", f"{cost_df['final_price'].values[0]:,.0f}")
                 else:
                     st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
@@ -363,12 +438,7 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         st.markdown("---")
         st.subheader("📂 جدول پودرهای اولیه خریداری شده")
         if not powders_df.empty:
-            disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns={
-                'powder_code': 'شماره ظرف پودر',
-                'material': 'جنس پودر',
-                'weight_g': 'وزن (گرم)',
-                'date': 'تاریخ ورود'
-            })
+            disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns=FARSI_HEADERS_MAP)
             st.table(disp_powders)
         else:
             st.info("هیچ پودر اولیه ای در سیستم ثبت نشده است.")
@@ -376,7 +446,6 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
     with sub_tab2:
         st.subheader("♻️ مدیریت و ثبت پودرهای بازیافت شده")
         
-        # تهیه لیست ترکیبی شامل پودرهای اولیه و پودرهای نورا برای پودر مبدا
         p_initial_list = [f"{code} [اولیه]" for code in powders_df['powder_code'].tolist()] if not powders_df.empty else []
         p_nora_list = [f"{code} [نورا]" for code in nora_df['powder_code'].tolist()] if not nora_df.empty else []
         combined_source_powders = p_initial_list + p_nora_list
@@ -388,7 +457,6 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
                 rc1, rc2 = st.columns(2)
                 with rc1:
                     selected_source = st.selectbox("شماره/کد ظرف پودر مبدا (خریداری‌شده اولیه / نورا)", combined_source_powders)
-                    # استخراج کد پودر بدون برچسب توضیحی
                     clean_source_code = selected_source.split(" [")[0] if selected_source else ""
                     recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)")
                     input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=5000.0)
@@ -415,16 +483,7 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         recycled_df = pd.read_sql_query("SELECT * FROM recycled_powders", conn)
         
         if not recycled_df.empty:
-            display_recycled_df = recycled_df.rename(columns={
-                'id': 'شناسه',
-                'powder_code': 'کد ظرف پودر مبدا',
-                'recycled_batch_code': 'کد بازیافت',
-                'input_powder_g': 'پودر ورودی (گرم)',
-                'unrecyclable_powder_g': 'غیرقابل بازیافت (گرم)',
-                'recycled_powder_g': 'بازیافت شده (گرم)',
-                'date': 'تاریخ بازیافت',
-                'notes': 'توضیحات'
-            })
+            display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP)
             st.table(display_recycled_df)
         else:
             st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
@@ -458,12 +517,7 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         st.markdown("---")
         st.subheader("📊 جدول پودرهای خریداری شده از نورا")
         if not nora_df.empty:
-            disp_nora = nora_df.rename(columns={
-                'powder_code': 'شماره ظرف پودر نورا',
-                'material': 'نوع متریال',
-                'weight_g': 'مقدار (گرم)',
-                'date': 'تاریخ ورود'
-            })
+            disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP)
             st.table(disp_nora)
         else:
             st.info("هنوز پودری از نورا ثبت نشده است.")
@@ -738,70 +792,8 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
     clean_df = df.drop(columns=[col for col in json_cols_to_drop if col in df.columns])
     
-    # دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی
-    farsi_headers_map = {
-        'powder_code': 'شماره ظرف پودر',
-        'material': 'جنس / نوع متریال پودر',
-        'weight_g': 'وزن پودر (گرم)',
-        'date': 'تاریخ ثبت',
-        'id': 'شناسه',
-        'recycled_batch_code': 'کد پارت بازیافت',
-        'input_powder_g': 'پودر ورودی به دستگاه (گرم)',
-        'unrecyclable_powder_g': 'پودر غیرقابل بازیافت (گرم)',
-        'recycled_powder_g': 'پودر بازیافتی قابل استفاده (گرم)',
-        'notes': 'توضیحات و ملاحظات',
-        'part_code': 'کد/شناسه قطعه',
-        'part_name': 'نام قطعه',
-        'quantity': 'تعداد روی صفحه',
-        'machine_model': 'مدل دستگاه',
-        'build_time_hrs': 'زمان تولید (ساعت)',
-        'downtime_hrs': 'زمان توقف (ساعت)',
-        'start_date': 'تاریخ شروع',
-        'start_time': 'ساعت شروع',
-        'end_date': 'تاریخ پایان',
-        'end_time': 'ساعت پایان',
-        'setup_time_hrs': 'زمان آماده‌سازی (ساعت)',
-        'cleaning_time_hrs': 'زمان تمیزکاری (ساعت)',
-        'waste_powder_g': 'پودر غیرقابل بازیافت (گرم)',
-        'part_with_support_g': 'وزن با ساپورت (گرم)',
-        'final_part_g': 'وزن قطعه نهایی (گرم)',
-        'filter_percentage': 'درصد فیلتر دستگاه (%)',
-        'build_plate_code': 'کد صفحه ساخت',
-        'build_plate_init_wt_g': 'وزن اولیه صفحه ساخت (گرم)',
-        'build_plate_post_wt_g': 'وزن صفحه ساخت بعد پرداخت (گرم)',
-        'engraving_qty': 'تعداد حکاکی لیزر',
-        'delivery_date': 'تاریخ تحویل',
-        'qc_inspector': 'بازرس کنترل کیفیت',
-        'qc_engineer': 'مسئول مهندسی کیفیت',
-        'qa_manager': 'مدیر تضمین کیفیت',
-        'powder_type': 'نوع پودر فلزی',
-        'volume_cm3': 'حجم قطعه (cm3)',
-        'net_weight_g': 'وزن خالص (گرم)',
-        'support_volume_cm3': 'حجم ساپورت (cm3)',
-        'support_weight_g': 'وزن ساپورت (گرم)',
-        'machine_type': 'نوع دستگاه',
-        'parts_on_plate': 'تعداد قطعات روی صفحه',
-        'print_time_hrs': 'زمان چاپ (ساعت)',
-        'design_time_hrs': 'زمان طراحی (ساعت)',
-        'post_process_time_hrs': 'زمان پرداخت (ساعت)',
-        'overhead_pct': 'ضریب سربار (%)',
-        'powder_cost_total': 'هزینه پودر (ریال)',
-        'argon_cost_total': 'هزینه گاز آرگون (ریال)',
-        'depreciation_cost_total': 'هزینه استهلاک دستگاه (ریال)',
-        'power_cost_total': 'هزینه برق (ریال)',
-        'engineering_cost_total': 'هزینه طراحی/مهندسی (ریال)',
-        'operator_cost_total': 'هزینه اپراتور (ریال)',
-        'post_process_cost_total': 'هزینه پرداخت‌کاری (ریال)',
-        'qc_cost_total': 'هزینه کنترل کیفیت (ریال)',
-        'utility_ventilation': 'هزینه تهویه (ریال)',
-        'utility_chiller': 'هزینه چیلر (ریال)',
-        'total_production_cost': 'بهای تمام شده کل (ریال)',
-        'overhead_cost': 'مبلغ سربار (ریال)',
-        'final_price': 'قیمت نهایی قابل ارائه به مشتری (ریال)'
-    }
-    
     if not clean_df.empty:
-        farsi_df = clean_df.rename(columns=farsi_headers_map)
+        farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
         st.table(farsi_df)
         
         col_down, col_del = st.columns([2, 2])
