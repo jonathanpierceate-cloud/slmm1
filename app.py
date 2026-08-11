@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی RTL + فونت B Nazanin + راست‌چین کردن کامل جداول ---
+# --- استایل اختصاصی، حل تداخل Dark Mode، تم آبی سایدبار و اصلاح کامل جداول ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -26,78 +26,74 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* اعمال راست‌چین‌سازی کلی و فونت B Nazanin */
+    /* ۱. اعمال فونت B Nazanin و راست‌چین‌سازی کلی */
     html, body, [class*="css"], div, span, p, h1, h2, h3, h4, h5, h6, input, button, select {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
     }
 
-    /* راست‌چین کردن سایدبار */
+    /* ۲. اصلاح سایدبار (تغییر پس‌زمینه سفید به رنگ آبی/سرمه‌ای شکیل) */
     [data-testid="stSidebar"] {
+        background-color: #1a2536 !important;
         direction: rtl !important;
         text-align: right !important;
-        background-color: #f8f9fa;
-        border-left: 1px solid #e9ecef;
+        border-left: 1px solid #2c3e50 !important;
+    }
+    [data-testid="stSidebar"] * {
+        color: #f8f9fa !important;
     }
 
-    /* راست‌چین کردن کامل جداول (سلول‌ها و سربرگ‌ها) */
+    /* ۳. اصلاح جداول و بایگانی (جلوگیری از هاید شدن و قطع متون) */
     [data-testid="stDataFrame"] {
-        border: 1px solid #dee2e6;
-        border-radius: 8px;
-        overflow: hidden;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
         direction: rtl !important;
-    }
-    
-    [data-testid="stDataFrame"] div[role="grid"] {
-        direction: rtl !important;
-        text-align: right !important;
+        border: 1px solid #3f4a5a !important;
+        border-radius: 8px !important;
+        background-color: #1e293b !important;
     }
 
-    [data-testid="stDataFrame"] div[role="columnheader"] {
-        text-align: right !important;
-        justify-content: flex-end !important;
-        font-weight: bold !important;
-        background-color: #f1f3f5 !important;
-    }
-
-    [data-testid="stDataFrame"] div[role="gridcell"] {
-        text-align: right !important;
-        justify-content: flex-end !important;
-    }
-
-    /* زیباسازی کارت‌های آمار و شاخص‌ها */
+    /* ۴. اصلاح کارت‌های آمار و شاخص‌ها (حل مشکل متون سفید روی پس‌زمینه سفید) */
     [data-testid="stMetric"] {
-        background: linear-gradient(135deg, #ffffff 0%, #f1f3f5 100%);
-        border: 1px solid #ced4da;
-        border-radius: 10px;
-        padding: 12px 16px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 10px !important;
+        padding: 15px !important;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
+    }
+    [data-testid="stMetricLabel"] > div {
+        color: #94a3b8 !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+    }
+    [data-testid="stMetricValue"] > div {
+        color: #38bdf8 !important;
+        font-weight: bold !important;
+        font-size: 1.6rem !important;
     }
 
-    /* زیباسازی دکمه اصلی */
+    /* ۵. زیباسازی دکمه اصلی */
     .stButton>button {
         width: 100%;
-        background-color: #0d6efd;
-        color: white;
-        border-radius: 8px;
-        font-weight: bold;
-        font-size: 1.1rem;
-        padding: 8px 16px;
-        border: none;
-        transition: all 0.3s ease;
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        font-size: 1.1rem !important;
+        padding: 8px 16px !important;
+        border: none !important;
+        transition: all 0.3s ease !important;
     }
     .stButton>button:hover {
-        background-color: #0b5ed7;
-        box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+        background-color: #1d4ed8 !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
     }
 
-    /* زیباسازی بخش‌های آکاردئونی (Expander) */
+    /* ۶. زیباسازی آکاردئون‌ها */
     .streamlit-expanderHeader {
-        background-color: #e9ecef;
-        border-radius: 6px;
-        font-weight: bold;
+        background-color: #1e293b !important;
+        color: #f8f9fa !important;
+        border-radius: 6px !important;
+        border: 1px solid #334155 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -278,7 +274,7 @@ if choice == "🔍 داشبورد و جستجوی جامع":
         conn.close()
 
 # ---------------------------------------------------------
-# ۲. آنالیز و بایگانی پودر (شامل پودر خریداری شده و پودر بازیافت شده)
+# ۲. آنالیز و بایگانی پودر
 # ---------------------------------------------------------
 elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
     st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -288,7 +284,6 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
     
     sub_tab1, sub_tab2 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده"])
     
-    # ------------------ بخش پودر خریداری شده ------------------
     with sub_tab1:
         with st.expander("➕ ثبت / ویرایش پودر جدید", expanded=True):
             col1, col2 = st.columns(2)
@@ -330,9 +325,17 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
                     
         st.markdown("---")
         st.subheader("📂 جدول پودرهای اولیه خریداری شده")
-        st.dataframe(powders_df[['powder_code', 'material', 'weight_g', 'date']], use_container_width=True)
+        if not powders_df.empty:
+            disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns={
+                'powder_code': 'شماره ظرف پودر',
+                'material': 'جنس پودر',
+                'weight_g': 'وزن پودر (گرم)',
+                'date': 'تاریخ ورود'
+            })
+            st.dataframe(disp_powders, use_container_width=True)
+        else:
+            st.info("هیچ پودر اولیه ای در سیستم ثبت نشده است.")
 
-    # ------------------ بخش جدول پودرهای بازیافت شده ------------------
     with sub_tab2:
         st.subheader("♻️ مدیریت و ثبت پودرهای بازیافت شده")
         
@@ -370,7 +373,6 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         recycled_df = pd.read_sql_query("SELECT * FROM recycled_powders", conn)
         
         if not recycled_df.empty:
-            # تغییر نام ستون‌ها جهت نمایش زیبا در جدول
             display_recycled_df = recycled_df.rename(columns={
                 'id': 'شناسه',
                 'powder_code': 'شماره ظرف پودر',
@@ -627,7 +629,7 @@ elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۶. خروجی و گزارش‌گیری اکسل
+# ۶. خروجی و گزارش‌گیری اکسل (با ترجمه و راست‌چین‌سازی کامل فارسی)
 # ---------------------------------------------------------
 elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     st.header("📂 بایگانی اطلاعات و خروجی گزارش‌ها")
@@ -645,12 +647,25 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
         "محاسبه هزینه (cost_calculator)": "cost_calculator"
     }
     
-    df = pd.read_sql_query(f"SELECT * FROM {table_map[target_table]}", conn)
-    st.dataframe(df, use_container_width=True)
+    selected_tbl = table_map[target_table]
+    df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
     
     if not df.empty:
-        excel_filename = f"{table_map[target_table]}_export.xlsx"
-        df.to_excel(excel_filename, index=False)
+        # دیکشنری نگاشت سربرگ‌های انگلیسی به فارسی جهت بایگانی کاملا خوانا
+        farsi_headers = {
+            'powder_code': 'شماره ظرف پودر', 'material': 'جنس پودر', 'weight_g': 'وزن (گرم)', 'date': 'تاریخ',
+            'part_code': 'کد قطعه', 'part_name': 'نام قطعه', 'quantity': 'تعداد', 'machine_model': 'دستگاه',
+            'build_time_hrs': 'زمان ساخت (ساعت)', 'input_powder_g': 'پودر ورودی (g)', 'waste_powder_g': 'پودر ضایعات (g)',
+            'final_part_g': 'وزن قطعه نهایی (g)', 'qc_inspector': 'بازرس QC', 'final_price': 'قیمت نهایی (ریال)',
+            'recycled_batch_code': 'شناسه بازیافت', 'unrecyclable_powder_g': 'پودر غیر قابل بازیافت (g)',
+            'recycled_powder_g': 'پودر بازیافت شده (g)', 'notes': 'توضیحات'
+        }
+        
+        display_df = df.rename(columns=farsi_headers)
+        st.dataframe(display_df, use_container_width=True)
+        
+        excel_filename = f"{selected_tbl}_export.xlsx"
+        display_df.to_excel(excel_filename, index=False)
         with open(excel_filename, "rb") as f:
             st.download_button(
                 label="📥 دانلود فایل اکسل جدول انتخابی",
@@ -658,4 +673,7 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
                 file_name=excel_filename,
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+    else:
+        st.info("اطلاعاتی در این جدول ثبت نشده است.")
+        
     conn.close()
