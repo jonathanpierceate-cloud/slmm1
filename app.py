@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل راست‌چین‌سازی استاندارد و بدون باگ انیمیشن ---
+# --- استایل اختصاصی: مخفی‌سازی کامل محتوای سایدبار در حالت بسته‌شده ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -27,29 +27,31 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* راست‌چین‌سازی کانتینر اصلی برنامه */
-    .stAppViewContainer, .stHeader, [data-testid="stHeader"] {
-        direction: rtl !important;
-        text-align: right !important;
-    }
-
-    /* اعمال فونت و اندازه متون */
-    html, body, p, h1, h2, h3, h4, h5, h6, input, button, select, label, [data-testid="stMarkdownContainer"] {
+    /* راست‌چین‌سازی عمومی بدون به هم زدن لایه‌بندی اصلی Streamlit */
+    html, body, .stApp {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
-        direction: rtl !important;
-        text-align: right !important;
+        direction: rtl;
+        text-align: right;
     }
 
-    p, span, label, input, select, button {
+    p, span, label, input, select, button, [data-testid="stMarkdownContainer"] {
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         font-size: 1.25rem !important;
+        direction: rtl;
+        text-align: right;
     }
     
-    h1 { font-size: 2.3rem !important; }
-    h2 { font-size: 1.9rem !important; }
-    h3 { font-size: 1.6rem !important; }
+    h1 { font-size: 2.3rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
+    h2 { font-size: 1.9rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
+    h3 { font-size: 1.6rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
 
-    /* راست‌چین‌سازی محتوای سایدبار بدون تداخل با عرض و انیمیشن */
-    [data-testid="stSidebarUserContent"] {
+    /* حل قطعی باگ بسته شدن سایدبار: مخفی‌سازی عناصر سایدبار در حالت Collapsed */
+    [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
+        display: none !important;
+    }
+
+    /* راست‌چین کردن محتوای سایدبار فقط در حالت باز */
+    [data-testid="stSidebar"][aria-expanded="true"] [data-testid="stSidebarUserContent"] {
         direction: rtl !important;
         text-align: right !important;
     }
@@ -60,8 +62,6 @@ st.markdown("""
         border: 1px solid #334155 !important;
         border-radius: 10px !important;
         padding: 15px !important;
-        direction: rtl !important;
-        text-align: right !important;
     }
     [data-testid="stMetricLabel"] > div {
         color: #94a3b8 !important;
@@ -84,7 +84,7 @@ st.markdown("""
         border: none !important;
     }
 
-    /* راست‌چین‌سازی جداول */
+    /* تنظیمات جداول */
     table {
         font-size: 1.15rem !important;
         direction: rtl !important;
