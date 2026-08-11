@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: جداول چپ‌چین استاندارد + سایدبار سرمه‌ای + کارت‌های دارک خوانا ---
+# --- استایل اختصاصی بدون تداخل با جداول + سایدبار سرمه‌ای + کارت‌های خوانا ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -27,37 +27,24 @@ st.markdown("""
     }
 
     /* ۱. اعمال فونت B Nazanin و راست‌چین‌سازی متون عمومی و فرم‌ها */
-    html, body, [class*="css"], div, span, p, h1, h2, h3, h4, h5, h6, input, button, select {
+    html, body, p, h1, h2, h3, h4, h5, h6, input, button, select {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
-        direction: rtl !important;
-        text-align: right !important;
+        direction: rtl;
+        text-align: right;
     }
 
-    /* ۲. تنظیم چپ‌چین استاندارد جداول (LTR) برای جلوگیری از به‌هم‌ریختگی متون انگلیسی و عددی */
-    [data-testid="stDataFrame"] {
-        direction: ltr !important;
-        border: 1px solid #3f4a5a !important;
-        border-radius: 8px !important;
-        background-color: #1e293b !important;
-    }
-    
-    [data-testid="stDataFrame"] div[role="grid"] {
-        direction: ltr !important;
-        text-align: left !important;
-    }
-
-    /* ۳. سایدبار سرمه‌ای و خوانا */
+    /* ۲. سایدبار سرمه‌ای و خوانا */
     [data-testid="stSidebar"] {
         background-color: #1a2536 !important;
-        direction: rtl !important;
-        text-align: right !important;
-        border-left: 1px solid #2c3e50 !important;
+        direction: rtl;
+        text-align: right;
+        border-left: 1px solid #2c3e50;
     }
     [data-testid="stSidebar"] * {
         color: #f8f9fa !important;
     }
 
-    /* ۴. کارت‌های آمار و شاخص‌ها (Dark Mode خوانا) */
+    /* ۳. کارت‌های آمار و شاخص‌ها (Dark Mode خوانا) */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -76,7 +63,7 @@ st.markdown("""
         font-size: 1.6rem !important;
     }
 
-    /* ۵. دکمه اصلی */
+    /* ۴. استایل دکمه اصلی */
     .stButton>button {
         width: 100%;
         background-color: #2563eb !important;
@@ -93,7 +80,7 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
     }
 
-    /* ۶. آکاردئون‌ها */
+    /* ۵. آکاردئون‌ها */
     .streamlit-expanderHeader {
         background-color: #1e293b !important;
         color: #f8f9fa !important;
@@ -251,26 +238,26 @@ if choice == "🔍 داشبورد و جستجوی جامع":
             
             with tab1:
                 st.subheader("مشخصات فنی و فرآیند ساخت")
-                st.dataframe(prod_df.T, use_container_width=True)
+                st.table(prod_df.T)
                 
             with tab2:
                 powder_code = prod_df['powder_code'].values[0]
                 powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code,))
                 if not powder_df.empty:
                     st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code}`")
-                    st.dataframe(powder_df.T, use_container_width=True)
+                    st.table(powder_df.T)
                 else:
                     st.warning("اطلاعات پودر متناظر یافت نشد.")
                     
             with tab3:
                 if not qc_df.empty:
-                    st.dataframe(qc_df.T, use_container_width=True)
+                    st.table(qc_df.T)
                 else:
                     st.info("فرم کنترل کیفیت برای این قطعه هنوز ثبت نشده است.")
                     
             with tab4:
                 if not cost_df.empty:
-                    st.dataframe(cost_df.T, use_container_width=True)
+                    st.table(cost_df.T)
                     st.metric("قیمت نهایی فروش (ریال)", f"{cost_df['final_price'].values[0]:,.0f}")
                 else:
                     st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
@@ -332,12 +319,12 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         st.subheader("📂 جدول پودرهای اولیه خریداری شده")
         if not powders_df.empty:
             disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns={
-                'powder_code': 'Powder Code / شماره ظرف پودر',
-                'material': 'Material / جنس',
-                'weight_g': 'Weight (g) / وزن',
-                'date': 'Date / تاریخ'
+                'powder_code': 'شماره ظرف پودر',
+                'material': 'جنس پودر',
+                'weight_g': 'وزن (گرم)',
+                'date': 'تاریخ ورود'
             })
-            st.dataframe(disp_powders, use_container_width=True)
+            st.table(disp_powders)
         else:
             st.info("هیچ پودر اولیه ای در سیستم ثبت نشده است.")
 
@@ -379,16 +366,16 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         
         if not recycled_df.empty:
             display_recycled_df = recycled_df.rename(columns={
-                'id': 'ID',
-                'powder_code': 'Powder Code',
-                'recycled_batch_code': 'Recycled Batch Code',
-                'input_powder_g': 'Input Powder (g)',
-                'unrecyclable_powder_g': 'Unrecyclable Powder (g)',
-                'recycled_powder_g': 'Recycled Powder (g)',
-                'date': 'Date',
-                'notes': 'Notes / توضیحات'
+                'id': 'شناسه',
+                'powder_code': 'کد ظرف پودر',
+                'recycled_batch_code': 'کد بازیافت',
+                'input_powder_g': 'ورودی (g)',
+                'unrecyclable_powder_g': 'غیرقابل بازیافت (g)',
+                'recycled_powder_g': 'بازیافت شده (g)',
+                'date': 'تاریخ',
+                'notes': 'توضیحات'
             })
-            st.dataframe(display_recycled_df, use_container_width=True)
+            st.table(display_recycled_df)
         else:
             st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
 
@@ -634,7 +621,7 @@ elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۶. خروجی و گزارش‌گیری اکسل (با ساختار چپ‌چین استاندارد جداول)
+# ۶. خروجی و گزارش‌گیری اکسل
 # ---------------------------------------------------------
 elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     st.header("📂 بایگانی اطلاعات و خروجی گزارش‌ها")
@@ -656,7 +643,7 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
     
     if not df.empty:
-        st.dataframe(df, use_container_width=True)
+        st.table(df)
         
         excel_filename = f"{selected_tbl}_export.xlsx"
         df.to_excel(excel_filename, index=False)
