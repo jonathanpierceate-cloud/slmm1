@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: مخفی‌سازی کامل محتوای سایدبار در حالت بسته‌شده ---
+# --- استایل اختصاصی: طراحی دقیق منوی سایدبار به صورت دکمه‌ای (مشابه تصویر) ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -45,7 +45,7 @@ st.markdown("""
     h2 { font-size: 1.9rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
     h3 { font-size: 1.6rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
 
-    /* حل قطعی باگ بسته شدن سایدبار: مخفی‌سازی عناصر سایدبار در حالت Collapsed */
+    /* حل باگ بسته شدن سایدبار: مخفی‌سازی عناصر سایدبار در حالت Collapsed */
     [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
         display: none !important;
     }
@@ -54,6 +54,39 @@ st.markdown("""
     [data-testid="stSidebar"][aria-expanded="true"] [data-testid="stSidebarUserContent"] {
         direction: rtl !important;
         text-align: right !important;
+    }
+
+    /* --- استایل‌دهی دکمه‌های منوی سایدبار مشابه تصویر --- */
+    div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    div[data-testid="stSidebar"] [data-testid="stRadio"] label {
+        background-color: transparent !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        border: 1px solid transparent !important;
+    }
+
+    div[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+        background-color: #2a374e !important;
+        border: 1px solid #3b82f6 !important;
+    }
+
+    /* هایلایت شدن دکمه فعال در منو */
+    div[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"] {
+        background-color: #334155 !important;
+        border: 1px solid #475569 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    }
+
+    /* مخفی کردن دایره رادیو باتن اصلی برای ظاهری شبیه دکمه کاملا تمیز */
+    div[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
+        display: none !important;
     }
 
     /* کارت‌های آمار و شاخص‌ها */
@@ -96,7 +129,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی جهت ترانسپوز دقیق در داشبورد
+# دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی
 FARSI_HEADERS_MAP = {
     'powder_code': 'شماره ظرف پودر',
     'material': 'جنس / نوع متریال پودر',
@@ -282,112 +315,22 @@ def get_db_connection():
 if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", width=140)
 
-# --- منوی اصلی وب اپلیکیشن ---
-st.title("سامانه مدیریت و بایگانی ساخت افزایشی (SLM)")
-st.caption("سیستم یکپارچه متصل‌کننده فرم‌های آنالیز پودر، تولید، کنترل کیفیت و برآورد قیمت")
-
-menu = [
-    "🔍 داشبورد و جستجوی جامع",
-    "🧪 ۱. آنالیز و بایگانی پودر",
-    "🏭 ۲. فرم ثبت تولید",
-    "🔬 ۳. فرم کنترل کیفیت (QC)",
-    "💰 ۴. محاسبه‌گر قیمت قطعه",
-    "📂 ۵. خروجی و گزارش‌گیری اکسل"
+# --- طراحی جدید منوی سایدبار مطابق عکس ---
+menu_options = [
+    "📦 پودر",
+    "🏭 فرم تولید",
+    "❇️ کنترل کیفیت",
+    "💰 محاسبه‌گر هزینه",
+    "⚙️ تنظیمات نرخ‌ها",
+    "🔍 بایگانی"
 ]
 
-choice = st.sidebar.selectbox("📋 منوی دسترسی بخش‌ها", menu)
+choice = st.sidebar.radio("", menu_options, index=1)
 
 # ---------------------------------------------------------
-# ۱. داشبورد و جستجوی جامع
+# ۱. پودر
 # ---------------------------------------------------------
-if choice == "🔍 داشبورد و جستجوی جامع":
-    header_col1, header_col2 = st.columns([5, 1])
-    with header_col1:
-        st.header("🔍 داشبورد مدیریتی و استعلام قطعات")
-    with header_col2:
-        if os.path.exists("logo.png"):
-            st.image("logo.png", width=110)
-    
-    conn = get_db_connection()
-    all_parts_df = pd.read_sql_query("SELECT part_code, part_name, powder_code, machine_model, quantity, date FROM production", conn)
-    
-    st.subheader("📋 لیست کلی تمامی قطعات ثبت‌شده")
-    if not all_parts_df.empty:
-        disp_all_parts = all_parts_df.rename(columns={
-            'part_code': 'کد قطعه',
-            'part_name': 'نام قطعه',
-            'powder_code': 'شماره ظرف پودر مصرفی',
-            'machine_model': 'مدل دستگاه',
-            'quantity': 'تعداد روی صفحه',
-            'date': 'تاریخ ساخت'
-        })
-        st.table(disp_all_parts)
-    else:
-        st.info("هنوز هیچ قطعه‌ای در سامانه ثبت نشده است.")
-    
-    st.markdown("---")
-    st.subheader("🔎 جستجوی پرونده جامع قطعه")
-    search_code = st.text_input("کد قطعه را جهت استعلام کامل وارد کنید:")
-    
-    if search_code:
-        prod_df = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(search_code,))
-        qc_df = pd.read_sql_query("SELECT * FROM qc WHERE part_code=?", conn, params=(search_code,))
-        cost_df = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(search_code,))
-        
-        if not prod_df.empty:
-            st.success(f"اطلاعات قطعه {search_code} یافت شد.")
-            
-            tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر", "🔬 کنترل کیفیت (QC)", "💰 برآورد مالی"])
-            
-            json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
-            
-            with tab1:
-                st.subheader("مشخصات فنی و فرآیند ساخت")
-                clean_prod = prod_df.drop(columns=[c for c in json_cols_to_drop if c in prod_df.columns])
-                disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP).T
-                disp_prod.columns = ["مقدار / مقدار ثبت شده"]
-                st.table(disp_prod)
-                
-            with tab2:
-                powder_code = prod_df['powder_code'].values[0]
-                powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code,))
-                if powder_df.empty:
-                    powder_df = pd.read_sql_query("SELECT * FROM nora_powders WHERE powder_code=?", conn, params=(powder_code,))
-                
-                if not powder_df.empty:
-                    st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code}`")
-                    clean_powder = powder_df.drop(columns=[c for c in json_cols_to_drop if c in powder_df.columns])
-                    disp_powder = clean_powder.rename(columns=FARSI_HEADERS_MAP).T
-                    disp_powder.columns = ["مشخصات پودر"]
-                    st.table(disp_powder)
-                else:
-                    st.warning("اطلاعات پودر متناظر یافت نشد.")
-                    
-            with tab3:
-                if not qc_df.empty:
-                    clean_qc = qc_df.drop(columns=[c for c in json_cols_to_drop if c in qc_df.columns])
-                    disp_qc = clean_qc.rename(columns=FARSI_HEADERS_MAP).T
-                    disp_qc.columns = ["اطلاعات ارزیابی کیفیت"]
-                    st.table(disp_qc)
-                else:
-                    st.info("فرم کنترل کیفیت برای این قطعه هنوز ثبت نشده است.")
-                    
-            with tab4:
-                if not cost_df.empty:
-                    disp_cost = cost_df.rename(columns=FARSI_HEADERS_MAP).T
-                    disp_cost.columns = ["جزئیات مالی و برآورد هزینه"]
-                    st.table(disp_cost)
-                    st.metric("قیمت نهایی فروش (ریال)", f"{cost_df['final_price'].values[0]:,.0f}")
-                else:
-                    st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
-        else:
-            st.error("قطعه‌ای با این کد یافت نشد.")
-    conn.close()
-
-# ---------------------------------------------------------
-# ۲. آنالیز و بایگانی پودر
-# ---------------------------------------------------------
-elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
+if choice == "📦 پودر":
     st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
     
     conn = get_db_connection()
@@ -525,9 +468,9 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
     conn.close()
 
 # ---------------------------------------------------------
-# ۳. فرم ثبت تولید
+# ۲. فرم تولید
 # ---------------------------------------------------------
-elif choice == "🏭 ۲. فرم ثبت تولید":
+elif choice == "🏭 فرم تولید":
     st.header("🏭 فرم رکورد تولید (Production Form.xlsx)")
     
     conn = get_db_connection()
@@ -602,9 +545,9 @@ elif choice == "🏭 ۲. فرم ثبت تولید":
     conn.close()
 
 # ---------------------------------------------------------
-# ۴. فرم کنترل کیفیت (QC)
+# ۳. کنترل کیفیت
 # ---------------------------------------------------------
-elif choice == "🔬 ۳. فرم کنترل کیفیت (QC)":
+elif choice == "❇️ کنترل کیفیت":
     st.header("🔬 فرم کنترل کیفیت (QC.xlsx)")
     
     conn = get_db_connection()
@@ -662,9 +605,9 @@ elif choice == "🔬 ۳. فرم کنترل کیفیت (QC)":
     conn.close()
 
 # ---------------------------------------------------------
-# ۵. محاسبه‌گر قیمت قطعه
+# ۴. محاسبه‌گر هزینه
 # ---------------------------------------------------------
-elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
+elif choice == "💰 محاسبه‌گر هزینه":
     st.header("💰 محاسبه‌گر بهای تمام شده و قیمت فروش (Cost Calculator.xlsx)")
     
     RATES = {
@@ -766,13 +709,86 @@ elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۶. خروجی و گزارش‌گیری اکسل + قابلیت حذف رکوردها
+# ۵. تنظیمات نرخ‌ها
 # ---------------------------------------------------------
-elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
-    st.header("📂 بایگانی اطلاعات، خروجی و مدیریت رکوردها")
+elif choice == "⚙️ تنظیمات نرخ‌ها":
+    st.header("⚙️ تنظیمات و نرخ‌های پایه محاسبات")
+    st.info("در این بخش می‌توانید نرخ‌های پایه متریال، دستمزدها، استهلاك دستگاه‌ها و خدمات کارگاهی را مدیریت کنید.")
+    
+    st.subheader("جدول نرخ‌های پایه اصلی (طبق Cost Calculator.xlsx)")
+    rates_data = {
+        "عنوان پارامتر / متریال": ["پودر Steel 316", "پودر Ti6Al4V", "پودر Inconel 718", "پودر Hastelloy X", "دستگاه M120 (ساعتی)", "دستگاه M300 (ساعتی)", "دستمزد طراح", "دستمزد اپراتور", "دستمزد مسئول QC", "گاز آرگون (ساعتی)"],
+        "نرخ پایه (ریال)": [120000000, 500000000, 300000000, 400000000, 1250000, 3125000, 2500000, 1870000, 2180000, 300000],
+        "واحد": ["کیلوگرم", "کیلوگرم", "کیلوگرم", "کیلوگرم", "ساعت", "ساعت", "نفرساعت", "نفرساعت", "نفرساعت", "لیتر/ساعت"]
+    }
+    st.table(pd.DataFrame(rates_data))
+
+# ---------------------------------------------------------
+# ۶. بایگانی و گزارش‌گیری اکسل
+# ---------------------------------------------------------
+elif choice == "🔍 بایگانی":
+    st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
     
     conn = get_db_connection()
     
+    st.subheader("🔎 استعلام پرونده جامع قطعه")
+    search_code = st.text_input("کد قطعه را جهت استعلام کامل وارد کنید:")
+    
+    if search_code:
+        prod_df = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(search_code,))
+        qc_df = pd.read_sql_query("SELECT * FROM qc WHERE part_code=?", conn, params=(search_code,))
+        cost_df = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(search_code,))
+        
+        if not prod_df.empty:
+            st.success(f"اطلاعات قطعه {search_code} یافت شد.")
+            tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر", "🔬 کنترل کیفیت (QC)", "💰 برآورد مالی"])
+            
+            json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
+            
+            with tab1:
+                st.subheader("مشخصات فنی و فرآیند ساخت")
+                clean_prod = prod_df.drop(columns=[c for c in json_cols_to_drop if c in prod_df.columns])
+                disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP).T
+                disp_prod.columns = ["مقدار / مقدار ثبت شده"]
+                st.table(disp_prod)
+                
+            with tab2:
+                powder_code = prod_df['powder_code'].values[0]
+                powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code,))
+                if powder_df.empty:
+                    powder_df = pd.read_sql_query("SELECT * FROM nora_powders WHERE powder_code=?", conn, params=(powder_code,))
+                
+                if not powder_df.empty:
+                    st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code}`")
+                    clean_powder = powder_df.drop(columns=[c for c in json_cols_to_drop if c in powder_df.columns])
+                    disp_powder = clean_powder.rename(columns=FARSI_HEADERS_MAP).T
+                    disp_powder.columns = ["مشخصات پودر"]
+                    st.table(disp_powder)
+                else:
+                    st.warning("اطلاعات پودر متناظر یافت نشد.")
+                    
+            with tab3:
+                if not qc_df.empty:
+                    clean_qc = qc_df.drop(columns=[c for c in json_cols_to_drop if c in qc_df.columns])
+                    disp_qc = clean_qc.rename(columns=FARSI_HEADERS_MAP).T
+                    disp_qc.columns = ["اطلاعات ارزیابی کیفیت"]
+                    st.table(disp_qc)
+                else:
+                    st.info("فرم کنترل کیفیت برای این قطعه هنوز ثبت نشده است.")
+                    
+            with tab4:
+                if not cost_df.empty:
+                    disp_cost = cost_df.rename(columns=FARSI_HEADERS_MAP).T
+                    disp_cost.columns = ["جزئیات مالی و برآورد هزینه"]
+                    st.table(disp_cost)
+                    st.metric("قیمت نهایی فروش (ریال)", f"{cost_df['final_price'].values[0]:,.0f}")
+                else:
+                    st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
+        else:
+            st.error("قطعه‌ای با این کد یافت نشد.")
+            
+    st.markdown("---")
+    st.subheader("📂 مشاهده و دانلود جداول پایگاه داده")
     target_table = st.selectbox("انتخاب جدول جهت مشاهده، دانلود Excel یا حذف رکورد:", 
                                 ["آنالیز پودر اولیه (powders)", "پودرهای بازیافت شده (recycled_powders)", "پودرهای خریداری شده از نورا (nora_powders)", "رکوردهای تولید (production)", "کنترل کیفیت (qc)", "محاسبه هزینه (cost_calculator)"])
     
@@ -788,7 +804,6 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     selected_tbl, pkey_col = table_map[target_table]
     df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
     
-    # حذف ستون‌های حاوی ساختار خام JSON از دید کاربر در جدول بایگانی
     json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
     clean_df = df.drop(columns=[col for col in json_cols_to_drop if col in df.columns])
     
