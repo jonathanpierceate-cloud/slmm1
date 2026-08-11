@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: بزرگ‌تر کردن فونت عمومی، اصلاح دقیق منوی سایدبار و کارت‌ها ---
+# --- استایل اختصاصی: اصلاح کامل رفتار سایدبار در حالت بسته (Collapsed) و فونت‌ها ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -42,15 +42,18 @@ st.markdown("""
     h2 { font-size: 1.9rem !important; }
     h3 { font-size: 1.6rem !important; }
 
-    /* ۲. تنظیم سایدبار سرمه‌ای با فونت درشت */
+    /* ۲. اصلاح سایدبار و جلوگیری از به هم خوردن layout هنگام بستن آن */
     [data-testid="stSidebar"] {
         background-color: #1a2536 !important;
-        direction: rtl;
-        text-align: right;
         border-left: 1px solid #2c3e50;
     }
 
-    /* ۳. اصلاح جعبه‌های انتخاب (Selectbox) در سایدبار جهت جلوگیری از سفید شدن متن */
+    [data-testid="stSidebarContent"] {
+        direction: rtl;
+        text-align: right;
+    }
+
+    /* ۳. اصلاح جعبه‌های انتخاب (Selectbox) در سایدبار */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div {
         background-color: #1e293b !important;
         color: #ffffff !important;
