@@ -652,7 +652,7 @@ elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۶. خروجی و گزارش‌گیری اکسل (با ترجمه جامع و کامل تمام سربرگ‌ها)
+# ۶. خروجی و گزارش‌گیری اکسل (حذف ستون‌های JSON خام و ترجمه کامل فارسی)
 # ---------------------------------------------------------
 elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     st.header("📂 بایگانی اطلاعات و خروجی گزارش‌ها")
@@ -673,6 +673,10 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     selected_tbl = table_map[target_table]
     df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
     
+    # حذف ستون‌های حاوی ساختار خام JSON از دید کاربر در جدول بایگانی
+    json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
+    clean_df = df.drop(columns=[col for col in json_cols_to_drop if col in df.columns])
+    
     # دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی
     farsi_headers_map = {
         # فرم پودر
@@ -680,7 +684,6 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
         'material': 'جنس پودر',
         'weight_g': 'وزن پودر (گرم)',
         'date': 'تاریخ ثبت',
-        'checklist_json': 'چک‌لیست آزمون‌ها',
         
         # پودر بازیافتی
         'id': 'شناسه',
@@ -710,12 +713,10 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
         'build_plate_code': 'کد صفحه ساخت',
         'build_plate_init_wt_g': 'وزن اولیه صفحه ساخت (گرم)',
         'build_plate_post_wt_g': 'وزن صفحه ساخت بعد پرداخت (گرم)',
-        'finishing_json': 'وضعیت فینیشینگ',
         'engraving_qty': 'تعداد حکاکی لیزر',
         'delivery_date': 'تاریخ تحویل',
         
         # کنترل کیفیت QC
-        'qc_checks_json': 'نتایج بازرسی‌های کیفی',
         'qc_inspector': 'بازرس کنترل کیفیت',
         'qc_engineer': 'مسئول مهندسی کیفیت',
         'qa_manager': 'مدیر تضمین کیفیت',
@@ -747,9 +748,8 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
         'final_price': 'قیمت نهایی قابل ارائه به مشتری (ریال)'
     }
     
-    if not df.empty:
-        # ترجمه کامل عناوین جدول
-        farsi_df = df.rename(columns=farsi_headers_map)
+    if not clean_df.empty:
+        farsi_df = clean_df.rename(columns=farsi_headers_map)
         st.table(farsi_df)
         
         excel_filename = f"{selected_tbl}_export.xlsx"
