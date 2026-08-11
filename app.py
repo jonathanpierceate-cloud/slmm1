@@ -12,7 +12,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: اصلاح پس‌زمینه و رنگ متن منوی کشویی سایدبار ---
+# --- استایل اختصاصی: بزرگ‌تر کردن فونت عمومی، اصلاح دقیق منوی سایدبار و کارت‌ها ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -26,14 +26,22 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. اعمال فونت B Nazanin و راست‌چین‌سازی متون عمومی */
-    html, body, p, h1, h2, h3, h4, h5, h6, input, button, select {
+    /* ۱. اعمال فونت B Nazanin، راست‌چین‌سازی و افزایش سایز فونت عمومی */
+    html, body, p, h1, h2, h3, h4, h5, h6, input, button, select, label {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl;
         text-align: right;
     }
 
-    /* ۲. تنظیم سایدبار سرمه‌ای */
+    /* افزایش سایز متون عمومی و عناوین */
+    p, span, label, input, select {
+        font-size: 1.25rem !important;
+    }
+    h1 { font-size: 2.3rem !important; }
+    h2 { font-size: 1.9rem !important; }
+    h3 { font-size: 1.6rem !important; }
+
+    /* ۲. تنظیم سایدبار سرمه‌ای با فونت درشت */
     [data-testid="stSidebar"] {
         background-color: #1a2536 !important;
         direction: rtl;
@@ -41,7 +49,7 @@ st.markdown("""
         border-left: 1px solid #2c3e50;
     }
 
-    /* ۳. اصلاح دقیق جعبه‌های انتخاب (Selectbox) در سایدبار جهت جلوگیری از سفید شدن متن در پس‌زمینه سفید */
+    /* ۳. اصلاح جعبه‌های انتخاب (Selectbox) در سایدبار جهت جلوگیری از سفید شدن متن */
     [data-testid="stSidebar"] div[data-baseweb="select"] > div {
         background-color: #1e293b !important;
         color: #ffffff !important;
@@ -52,14 +60,16 @@ st.markdown("""
     [data-testid="stSidebar"] div[data-baseweb="select"] span {
         color: #ffffff !important;
         font-weight: bold !important;
+        font-size: 1.2rem !important;
     }
 
-    /* اصلاح رنگ عنوان‌ها و لیبل‌ها در سایدبار */
     [data-testid="stSidebar"] label, [data-testid="stSidebar"] p {
         color: #f8f9fa !important;
+        font-size: 1.3rem !important;
+        font-weight: bold !important;
     }
 
-    /* ۴. کارت‌های آمار و شاخص‌ها (Dark Mode خوانا) */
+    /* ۴. کارت‌های آمار و شاخص‌ها با فونت درشت */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -70,12 +80,12 @@ st.markdown("""
     [data-testid="stMetricLabel"] > div {
         color: #94a3b8 !important;
         font-weight: bold !important;
-        font-size: 1.1rem !important;
+        font-size: 1.2rem !important;
     }
     [data-testid="stMetricValue"] > div {
         color: #38bdf8 !important;
         font-weight: bold !important;
-        font-size: 1.6rem !important;
+        font-size: 1.8rem !important;
     }
 
     /* ۵. استایل دکمه اصلی */
@@ -85,8 +95,8 @@ st.markdown("""
         color: #ffffff !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        font-size: 1.1rem !important;
-        padding: 8px 16px !important;
+        font-size: 1.3rem !important;
+        padding: 10px 20px !important;
         border: none !important;
         transition: all 0.3s ease !important;
     }
@@ -101,6 +111,12 @@ st.markdown("""
         color: #f8f9fa !important;
         border-radius: 6px !important;
         border: 1px solid #334155 !important;
+        font-size: 1.3rem !important;
+    }
+
+    /* ۷. افزایش سایز فونت جداول */
+    table {
+        font-size: 1.15rem !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -382,12 +398,12 @@ elif choice == "🧪 ۱. آنالیز و بایگانی پودر":
         if not recycled_df.empty:
             display_recycled_df = recycled_df.rename(columns={
                 'id': 'شناسه',
-                'powder_code': 'کد ظرف پودر',
+                'powder_code': 'کد ظرف پودر مبدا',
                 'recycled_batch_code': 'کد بازیافت',
-                'input_powder_g': 'ورودی (g)',
-                'unrecyclable_powder_g': 'غیرقابل بازیافت (g)',
-                'recycled_powder_g': 'بازیافت شده (g)',
-                'date': 'تاریخ',
+                'input_powder_g': 'پودر ورودی (گرم)',
+                'unrecyclable_powder_g': 'غیرقابل بازیافت (گرم)',
+                'recycled_powder_g': 'بازیافت شده (گرم)',
+                'date': 'تاریخ بازیافت',
                 'notes': 'توضیحات'
             })
             st.table(display_recycled_df)
@@ -636,7 +652,7 @@ elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۶. خروجی و گزارش‌گیری اکسل
+# ۶. خروجی و گزارش‌گیری اکسل (با ترجمه جامع و کامل تمام سربرگ‌ها)
 # ---------------------------------------------------------
 elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     st.header("📂 بایگانی اطلاعات و خروجی گزارش‌ها")
@@ -657,11 +673,87 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     selected_tbl = table_map[target_table]
     df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
     
+    # دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی
+    farsi_headers_map = {
+        # فرم پودر
+        'powder_code': 'شماره ظرف پودر',
+        'material': 'جنس پودر',
+        'weight_g': 'وزن پودر (گرم)',
+        'date': 'تاریخ ثبت',
+        'checklist_json': 'چک‌لیست آزمون‌ها',
+        
+        # پودر بازیافتی
+        'id': 'شناسه',
+        'recycled_batch_code': 'کد پارت بازیافت',
+        'input_powder_g': 'پودر ورودی به دستگاه (گرم)',
+        'unrecyclable_powder_g': 'پودر غیرقابل بازیافت (گرم)',
+        'recycled_powder_g': 'پودر بازیافتی قابل استفاده (گرم)',
+        'notes': 'توضیحات و ملاحظات',
+        
+        # فرم تولید
+        'part_code': 'کد/شناسه قطعه',
+        'part_name': 'نام قطعه',
+        'quantity': 'تعداد روی صفحه',
+        'machine_model': 'مدل دستگاه',
+        'build_time_hrs': 'زمان تولید (ساعت)',
+        'downtime_hrs': 'زمان توقف (ساعت)',
+        'start_date': 'تاریخ شروع',
+        'start_time': 'ساعت شروع',
+        'end_date': 'تاریخ پایان',
+        'end_time': 'ساعت پایان',
+        'setup_time_hrs': 'زمان آماده‌سازی (ساعت)',
+        'cleaning_time_hrs': 'زمان تمیزکاری (ساعت)',
+        'waste_powder_g': 'پودر غیرقابل بازیافت (گرم)',
+        'part_with_support_g': 'وزن با ساپورت (گرم)',
+        'final_part_g': 'وزن قطعه نهایی (گرم)',
+        'filter_percentage': 'درصد فیلتر دستگاه (%)',
+        'build_plate_code': 'کد صفحه ساخت',
+        'build_plate_init_wt_g': 'وزن اولیه صفحه ساخت (گرم)',
+        'build_plate_post_wt_g': 'وزن صفحه ساخت بعد پرداخت (گرم)',
+        'finishing_json': 'وضعیت فینیشینگ',
+        'engraving_qty': 'تعداد حکاکی لیزر',
+        'delivery_date': 'تاریخ تحویل',
+        
+        # کنترل کیفیت QC
+        'qc_checks_json': 'نتایج بازرسی‌های کیفی',
+        'qc_inspector': 'بازرس کنترل کیفیت',
+        'qc_engineer': 'مسئول مهندسی کیفیت',
+        'qa_manager': 'مدیر تضمین کیفیت',
+        
+        # محاسبه‌گر هزینه
+        'powder_type': 'نوع پودر فلزی',
+        'volume_cm3': 'حجم قطعه (cm3)',
+        'net_weight_g': 'وزن خالص (گرم)',
+        'support_volume_cm3': 'حجم ساپورت (cm3)',
+        'support_weight_g': 'وزن ساپورت (گرم)',
+        'machine_type': 'نوع دستگاه',
+        'parts_on_plate': 'تعداد قطعات روی صفحه',
+        'print_time_hrs': 'زمان چاپ (ساعت)',
+        'design_time_hrs': 'زمان طراحی (ساعت)',
+        'post_process_time_hrs': 'زمان پرداخت (ساعت)',
+        'overhead_pct': 'ضریب سربار (%)',
+        'powder_cost_total': 'هزینه پودر (ریال)',
+        'argon_cost_total': 'هزینه گاز آرگون (ریال)',
+        'depreciation_cost_total': 'هزینه استهلاک دستگاه (ریال)',
+        'power_cost_total': 'هزینه برق (ریال)',
+        'engineering_cost_total': 'هزینه طراحی/مهندسی (ریال)',
+        'operator_cost_total': 'هزینه اپراتور (ریال)',
+        'post_process_cost_total': 'هزینه پرداخت‌کاری (ریال)',
+        'qc_cost_total': 'هزینه کنترل کیفیت (ریال)',
+        'utility_ventilation': 'هزینه تهویه (ریال)',
+        'utility_chiller': 'هزینه چیلر (ریال)',
+        'total_production_cost': 'بهای تمام شده کل (ریال)',
+        'overhead_cost': 'مبلغ سربار (ریال)',
+        'final_price': 'قیمت نهایی قابل ارائه به مشتری (ریال)'
+    }
+    
     if not df.empty:
-        st.table(df)
+        # ترجمه کامل عناوین جدول
+        farsi_df = df.rename(columns=farsi_headers_map)
+        st.table(farsi_df)
         
         excel_filename = f"{selected_tbl}_export.xlsx"
-        df.to_excel(excel_filename, index=False)
+        farsi_df.to_excel(excel_filename, index=False)
         with open(excel_filename, "rb") as f:
             st.download_button(
                 label="📥 دانلود فایل اکسل جدول انتخابی",
