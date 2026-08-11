@@ -195,10 +195,41 @@ FARSI_HEADERS_MAP = {
 # --- مدیریت پایگاه داده SQLite ---
 DB_NAME = "slm_management.db"
 
+# مقادیر اولیه نرخ‌های پایه
+DEFAULT_RATES = {
+    "powder_price_Steel_316": 120000000,
+    "powder_price_Ti6Al4V": 500000000,
+    "powder_price_Inconel_718": 300000000,
+    "powder_price_Hastelloy_X": 400000000,
+    "machine_depr_M120": 1250000,
+    "machine_depr_M300": 3125000,
+    "power_kw_M120": 7,
+    "power_kw_M300": 15,
+    "wage_designer": 2500000,
+    "wage_operator": 1870000,
+    "wage_qc": 2180000,
+    "argon_rate": 300000,
+    "electricity_rate": 50000,
+    "post_process_rate": 500000,
+    "qc_fixed_cost": 40000000,
+    "ventilation_rate": 200000,
+    "chiller_rate": 2500
+}
+
 def init_db():
     conn = sqlite3.connect(DB_NAME)
     c = conn.cursor()
     
+    # جدول تنظیمات سیستم و نرخ‌ها
+    c.execute('''CREATE TABLE IF NOT EXISTS system_settings (
+                    key TEXT PRIMARY KEY,
+                    value REAL
+                )''')
+    
+    # درج مقادیر پیش‌فرض در صورت عدم وجود
+    for key, val in DEFAULT_RATES.items():
+        c.execute("INSERT OR IGNORE INTO system_settings (key, value) VALUES (?, ?)", (key, val))
+
     # جدول پودرها (خریداری شده اولیه)
     c.execute('''CREATE TABLE IF NOT EXISTS powders (
                     powder_code TEXT PRIMARY KEY,
@@ -312,6 +343,15 @@ init_db()
 def get_db_connection():
     return sqlite3.connect(DB_NAME)
 
+def load_system_rates():
+    conn = get_db_connection()
+    df = pd.read_sql_query("SELECT * FROM system_settings", conn)
+    conn.close()
+    rates = DEFAULT_RATES.copy()
+    for _, row in df.iterrows():
+        rates[row['key']] = row['value']
+    return rates
+
 # --- نمایش لوگو در سایدبار ---
 if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", width=140)
@@ -330,7 +370,7 @@ menu_options = [
 choice = st.sidebar.radio("", menu_options, index=0)
 
 # ---------------------------------------------------------
-# ۰. خانه (مطابق تصویر ارسالی)
+# ۰. خانه
 # ---------------------------------------------------------
 if choice == "🏠 خانه":
     head_c1, head_col2 = st.columns([6, 1])
@@ -343,7 +383,6 @@ if choice == "🏠 خانه":
 
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # آمار زنده از دیتابیس
     conn = get_db_connection()
     powder_count = pd.read_sql_query("SELECT COUNT(*) as cnt FROM powders", conn)['cnt'].values[0] + pd.read_sql_query("SELECT COUNT(*) as cnt FROM nora_powders", conn)['cnt'].values[0]
     prod_count = pd.read_sql_query("SELECT COUNT(*) as cnt FROM production", conn)['cnt'].values[0]
@@ -522,53 +561,71 @@ elif choice == "🏭 فرم تولید":
     nora_powders_list = pd.read_sql_query("SELECT powder_code FROM nora_powders", conn)['powder_code'].tolist()
     all_powders = list(set(powders_list + nora_powders_list))
     
+    st.subheader("حالت")
+    mode = st.radio("", ["ثبت قطعه جدید", "ویرایش قطعه موجود"], horizontal=True, key="prod_mode")
+    
+    edit_data = {}
+    if mode == "ویرایش قطعه موجود":
+        existing_parts = pd.read_sql_query("SELECT part_code FROM production", conn)['part_code'].tolist()
+        if existing_parts:
+            selected_edit_code = st.selectbox("انتخاب قطعه جهت ویرایش:", existing_parts)
+            edit_data = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_edit_code,)).iloc[0].to_dict()
+        else:
+            st.warning("هنوز هیچ قطعه‌ای جهت ویرایش ثبت نشده است.")
+
     if not all_powders:
         st.warning("جهت ثبت فرم تولید، ابتدا باید حداقل یک پودر در بخش ۱ ثبت شده باشد.")
     else:
         with st.form("prod_form"):
             col1, col2, col3 = st.columns(3)
             with col1:
-                part_code = st.text_input("کد قطعه (شناسه یکتا)")
-                part_name = st.text_input("نام قطعه")
+                default_part_code = edit_data.get("part_code", "") if mode == "ویرایش قطعه موجود" else ""
+                part_code = st.text_input("کد قطعه (شناسه یکتا)", value=default_part_code, disabled=(mode == "ویرایش قطعه موجود"))
+                part_name = st.text_input("نام قطعه", value=edit_data.get("part_name", ""))
             with col2:
-                powder_code = st.selectbox("شماره ظرف پودر مصرفی", all_powders)
-                machine_model = st.selectbox("مدل دستگاه", ["M120", "M300", "سایر"])
+                default_powder_index = all_powders.index(edit_data["powder_code"]) if mode == "ویرایش قطعه موجود" and edit_data.get("powder_code") in all_powders else 0
+                powder_code = st.selectbox("شماره ظرف پودر مصرفی", all_powders, index=default_powder_index)
+                
+                machine_options = ["M120", "M300", "سایر"]
+                default_machine_index = machine_options.index(edit_data["machine_model"]) if mode == "ویرایش قطعه موجود" and edit_data.get("machine_model") in machine_options else 0
+                machine_model = st.selectbox("مدل دستگاه", machine_options, index=default_machine_index)
             with col3:
-                quantity = st.number_input("تعداد روی صفحه ساخت", min_value=1, value=1)
-                date_str = st.date_input("تاریخ ساخت").strftime("%Y-%m-%d")
+                quantity = st.number_input("تعداد روی صفحه ساخت", min_value=1, value=int(edit_data.get("quantity", 1)))
+                date_str = st.date_input("تاریخ ساخت", value=datetime.strptime(edit_data.get("date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")).strftime("%Y-%m-%d")
                 
             st.markdown("---")
             st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت")
             tc1, tc2, tc3 = st.columns(3)
             with tc1:
-                build_time_hrs = st.number_input("زمان تولید (ساعت)", min_value=0.0)
-                downtime_hrs = st.number_input("زمان توقف حین ساخت (ساعت)", min_value=0.0)
+                build_time_hrs = st.number_input("زمان تولید (ساعت)", min_value=0.0, value=float(edit_data.get("build_time_hrs", 0.0)))
+                downtime_hrs = st.number_input("زمان توقف حین ساخت (ساعت)", min_value=0.0, value=float(edit_data.get("downtime_hrs", 0.0)))
             with tc2:
-                start_date = st.text_input("تاریخ شروع", value=date_str)
-                start_time = st.text_input("ساعت شروع", value="08:00")
-                end_date = st.text_input("تاریخ پایان", value=date_str)
-                end_time = st.text_input("ساعت پایان", value="16:00")
+                start_date = st.text_input("تاریخ شروع", value=edit_data.get("start_date", date_str))
+                start_time = st.text_input("ساعت شروع", value=edit_data.get("start_time", "08:00"))
+                end_date = st.text_input("تاریخ پایان", value=edit_data.get("end_date", date_str))
+                end_time = st.text_input("ساعت پایان", value=edit_data.get("end_time", "16:00"))
             with tc3:
-                setup_time_hrs = st.number_input("زمان آماده‌سازی دستگاه (ساعت)", min_value=0.0)
-                cleaning_time_hrs = st.number_input("زمان تمیزکاری دستگاه (ساعت)", min_value=0.0)
+                setup_time_hrs = st.number_input("زمان آماده‌سازی دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("setup_time_hrs", 0.0)))
+                cleaning_time_hrs = st.number_input("زمان تمیزکاری دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("cleaning_time_hrs", 0.0)))
                 
             st.markdown("---")
             st.subheader("⚖️ ۲- پارامترهای متریال و وزن")
             mc1, mc2 = st.columns(2)
             with mc1:
-                input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0)
-                waste_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0)
-                part_with_support_g = st.number_input("وزن قطعه با ساپورت (گرم)", min_value=0.0)
-                final_part_g = st.number_input("وزن قطعه نهایی (گرم)", min_value=0.0)
-                filter_pct = st.number_input("درصد فیلتر دستگاه (%)", min_value=0.0, max_value=100.0)
+                input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=float(edit_data.get("input_powder_g", 0.0)))
+                waste_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=float(edit_data.get("waste_powder_g", 0.0)))
+                part_with_support_g = st.number_input("وزن قطعه با ساپورت (گرم)", min_value=0.0, value=float(edit_data.get("part_with_support_g", 0.0)))
+                final_part_g = st.number_input("وزن قطعه نهایی (گرم)", min_value=0.0, value=float(edit_data.get("final_part_g", 0.0)))
+                filter_pct = st.number_input("درصد فیلتر دستگاه (%)", min_value=0.0, max_value=100.0, value=float(edit_data.get("filter_percentage", 0.0)))
             with mc2:
-                plate_code = st.text_input("کد صفحه ساخت")
-                plate_init_wt = st.number_input("وزن اولیه صفحه ساخت (گرم)", min_value=0.0)
-                plate_post_wt = st.number_input("وزن صفحه ساخت پس از پرداخت (گرم)", min_value=0.0)
+                plate_code = st.text_input("کد صفحه ساخت", value=edit_data.get("build_plate_code", ""))
+                plate_init_wt = st.number_input("وزن اولیه صفحه ساخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_init_wt_g", 0.0)))
+                plate_post_wt = st.number_input("وزن صفحه ساخت پس از پرداخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_post_wt_g", 0.0)))
                 
-            submitted = st.form_submit_button("💾 ثبت رکورد تولید")
+            submitted = st.form_submit_button("💾 ذخیره تغییرات / ثبت رکورد تولید")
             if submitted:
-                if part_code:
+                target_code = default_part_code if mode == "ویرایش قطعه موجود" else part_code
+                if target_code:
                     c = conn.cursor()
                     c.execute("""INSERT OR REPLACE INTO production 
                         (part_code, part_name, powder_code, quantity, machine_model, date,
@@ -577,13 +634,14 @@ elif choice == "🏭 فرم تولید":
                          part_with_support_g, final_part_g, filter_percentage, build_plate_code,
                          build_plate_init_wt_g, build_plate_post_wt_g)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                        (part_code, part_name, powder_code, quantity, machine_model, date_str,
+                        (target_code, part_name, powder_code, quantity, machine_model, date_str,
                          build_time_hrs, downtime_hrs, start_date, start_time, end_date, end_time,
                          setup_time_hrs, cleaning_time_hrs, input_powder_g, waste_powder_g,
                          part_with_support_g, final_part_g, filter_pct, plate_code,
                          plate_init_wt, plate_post_wt))
                     conn.commit()
-                    st.success(f"اطلاعات تولید قطعه {part_code} ثبت شد.")
+                    st.success(f"اطلاعات تولید قطعه {target_code} با موفقیت ذخیره شد.")
+                    st.rerun()
                 else:
                     st.error("لطفاً کد قطعه را مشخص کنید.")
     conn.close()
@@ -649,22 +707,40 @@ elif choice == "❇️ کنترل کیفیت":
     conn.close()
 
 # ---------------------------------------------------------
-# ۴. محاسبه‌گر هزینه
+# ۴. محاسبه‌گر هزینه (بر اساس نرخ‌های متغیر دیتابیس)
 # ---------------------------------------------------------
 elif choice == "💰 محاسبه‌گر هزینه":
     st.header("💰 محاسبه‌گر بهای تمام شده و قیمت فروش (Cost Calculator.xlsx)")
     
+    # بارگذاری نرخ‌های زنده و متغیر از دیتابیس
+    SYSTEM_RATES = load_system_rates()
+    
     RATES = {
-        "powder_price_per_kg": {"Steel 316": 120000000, "Ti6Al4V": 500000000, "Inconel 718": 300000000, "Hastelloy X": 400000000},
-        "machine_depreciation_hr": {"M120": 1250000, "M300": 3125000},
-        "power_kw_hr": {"M120": 7, "M300": 15},
-        "wages": {"designer_hr": 2500000, "operator_hr": 1870000, "qc_hr": 2180000},
-        "argon_hr": 300000,
-        "electricity_kwh": 50000,
-        "post_process_hr": 500000,
-        "qc_fixed_cost": 40000000,
-        "ventilation_hr": 200000,
-        "chiller_hr": 2500,
+        "powder_price_per_kg": {
+            "Steel 316": SYSTEM_RATES["powder_price_Steel_316"],
+            "Ti6Al4V": SYSTEM_RATES["powder_price_Ti6Al4V"],
+            "Inconel 718": SYSTEM_RATES["powder_price_Inconel_718"],
+            "Hastelloy X": SYSTEM_RATES["powder_price_Hastelloy_X"]
+        },
+        "machine_depreciation_hr": {
+            "M120": SYSTEM_RATES["machine_depr_M120"],
+            "M300": SYSTEM_RATES["machine_depr_M300"]
+        },
+        "power_kw_hr": {
+            "M120": SYSTEM_RATES["power_kw_M120"],
+            "M300": SYSTEM_RATES["power_kw_M300"]
+        },
+        "wages": {
+            "designer_hr": SYSTEM_RATES["wage_designer"],
+            "operator_hr": SYSTEM_RATES["wage_operator"],
+            "qc_hr": SYSTEM_RATES["wage_qc"]
+        },
+        "argon_hr": SYSTEM_RATES["argon_rate"],
+        "electricity_kwh": SYSTEM_RATES["electricity_rate"],
+        "post_process_hr": SYSTEM_RATES["post_process_rate"],
+        "qc_fixed_cost": SYSTEM_RATES["qc_fixed_cost"],
+        "ventilation_hr": SYSTEM_RATES["ventilation_rate"],
+        "chiller_hr": SYSTEM_RATES["chiller_rate"],
         "density": {"Steel 316": 8.0, "Ti6Al4V": 4.43, "Inconel 718": 8.19, "Hastelloy X": 8.22}
     }
     
@@ -753,19 +829,82 @@ elif choice == "💰 محاسبه‌گر هزینه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۵. تنظیمات نرخ‌ها
+# ۵. تنظیمات نرخ‌ها (امکان ویرایش و ذخیره پایدار در دیتابیس)
 # ---------------------------------------------------------
 elif choice == "⚙️ تنظیمات نرخ‌ها":
-    st.header("⚙️ تنظیمات و نرخ‌های پایه محاسبات")
-    st.info("در این بخش می‌توانید نرخ‌های پایه متریال، دستمزدها، استهلاك دستگاه‌ها و خدمات کارگاهی را مدیریت کنید.")
+    st.header("⚙️ تنظیمات و ویرایش نرخ‌های پایه محاسبات")
+    st.info("تغییرات در این بخش بلافاصله در «محاسبه‌گر هزینه» و فرآیندهای مالی اعمال می‌شوند.")
     
-    st.subheader("جدول نرخ‌های پایه اصلی (طبق Cost Calculator.xlsx)")
-    rates_data = {
-        "عنوان پارامتر / متریال": ["پودر Steel 316", "پودر Ti6Al4V", "پودر Inconel 718", "پودر Hastelloy X", "دستگاه M120 (ساعتی)", "دستگاه M300 (ساعتی)", "دستمزد طراح", "دستمزد اپراتور", "دستمزد مسئول QC", "گاز آرگون (ساعتی)"],
-        "نرخ پایه (ریال)": [120000000, 500000000, 300000000, 400000000, 1250000, 3125000, 2500000, 1870000, 2180000, 300000],
-        "واحد": ["کیلوگرم", "کیلوگرم", "کیلوگرم", "کیلوگرم", "ساعت", "ساعت", "نفرساعت", "نفرساعت", "نفرساعت", "لیتر/ساعت"]
-    }
-    st.table(pd.DataFrame(rates_data))
+    current_rates = load_system_rates()
+    
+    with st.form("settings_form"):
+        st.subheader("۱. قیمت پودرهای فلزی (ریال به ازای هر کیلوگرم)")
+        c1, c2 = st.columns(2)
+        with c1:
+            r_steel = st.number_input("پودر Steel 316", min_value=0.0, value=float(current_rates.get("powder_price_Steel_316", 120000000)))
+            r_ti = st.number_input("پودر Ti6Al4V", min_value=0.0, value=float(current_rates.get("powder_price_Ti6Al4V", 500000000)))
+        with c2:
+            r_inconel = st.number_input("پودر Inconel 718", min_value=0.0, value=float(current_rates.get("powder_price_Inconel_718", 300000000)))
+            r_hastelloy = st.number_input("پودر Hastelloy X", min_value=0.0, value=float(current_rates.get("powder_price_Hastelloy_X", 400000000)))
+
+        st.markdown("---")
+        st.subheader("۲. نرخ ساعتی استهلاک دستگاه‌ها (ریال / ساعت)")
+        m1, m2 = st.columns(2)
+        with m1:
+            r_depr_m120 = st.number_input("نرخ استهلاک دستگاه M120", min_value=0.0, value=float(current_rates.get("machine_depr_M120", 1250000)))
+        with m2:
+            r_depr_m300 = st.number_input("نرخ استهلاک دستگاه M300", min_value=0.0, value=float(current_rates.get("machine_depr_M300", 3125000)))
+
+        st.markdown("---")
+        st.subheader("۳. دستمزدهای نیروی انسانی (ریال / نفرساعت)")
+        w1, w2, w3 = st.columns(3)
+        with w1:
+            r_wage_designer = st.number_input("دستمزد طراح مهندسی", min_value=0.0, value=float(current_rates.get("wage_designer", 2500000)))
+        with w2:
+            r_wage_operator = st.number_input("دستمزد اپراتور دستگاه", min_value=0.0, value=float(current_rates.get("wage_operator", 1870000)))
+        with w3:
+            r_wage_qc = st.number_input("دستمزد مسئول کنترل کیفیت", min_value=0.0, value=float(current_rates.get("wage_qc", 2180000)))
+
+        st.markdown("---")
+        st.subheader("۴. هزینه‌های جانبی، انرژی و مصارف کارگاهی")
+        u1, u2, u3 = st.columns(3)
+        with u1:
+            r_argon = st.number_input("نرخ گاز آرگون (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("argon_rate", 300000)))
+            r_electricity = st.number_input("نرخ برق مصرفی (ریال/کیلووات‌ساعت)", min_value=0.0, value=float(current_rates.get("electricity_rate", 50000)))
+        with u2:
+            r_post_process = st.number_input("عملیات پرداخت سطحی (ریال/ماشین‌ساعت)", min_value=0.0, value=float(current_rates.get("post_process_rate", 500000)))
+            r_qc_fixed = st.number_input("تست‌های QC ثابت (ریال/قطعه)", min_value=0.0, value=float(current_rates.get("qc_fixed_cost", 40000000)))
+        with u3:
+            r_ventilation = st.number_input("سیستم تهویه (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("ventilation_rate", 200000)))
+            r_chiller = st.number_input("آب خنک‌کاری چیلر (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("chiller_rate", 2500)))
+
+        save_rates_submit = st.form_submit_button("💾 ذخیره تغییرات نرخ‌ها در پایگاه داده")
+        if save_rates_submit:
+            conn = get_db_connection()
+            c = conn.cursor()
+            updated_pairs = [
+                ("powder_price_Steel_316", r_steel),
+                ("powder_price_Ti6Al4V", r_ti),
+                ("powder_price_Inconel_718", r_inconel),
+                ("powder_price_Hastelloy_X", r_hastelloy),
+                ("machine_depr_M120", r_depr_m120),
+                ("machine_depr_M300", r_depr_m300),
+                ("wage_designer", r_wage_designer),
+                ("wage_operator", r_wage_operator),
+                ("wage_qc", r_wage_qc),
+                ("argon_rate", r_argon),
+                ("electricity_rate", r_electricity),
+                ("post_process_rate", r_post_process),
+                ("qc_fixed_cost", r_qc_fixed),
+                ("ventilation_rate", r_ventilation),
+                ("chiller_rate", r_chiller)
+            ]
+            for k, val in updated_pairs:
+                c.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (k, val))
+            conn.commit()
+            conn.close()
+            st.success("تمام نرخ‌های جدید با موفقیت ذخیره شدند و در بخش «محاسبه‌گر هزینه» اعمال گردیدند.")
+            st.rerun()
 
 # ---------------------------------------------------------
 # ۶. بایگانی و گزارش‌گیری اکسل
