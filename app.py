@@ -88,7 +88,7 @@ st.markdown("""
         font-size: 1.8rem !important;
     }
 
-    /* ۵. استایل دکمه اصلی */
+    /* ۵. استایل دکمه‌ها */
     .stButton>button {
         width: 100%;
         background-color: #2563eb !important;
@@ -652,25 +652,25 @@ elif choice == "💰 ۴. محاسبه‌گر قیمت قطعه":
     conn.close()
 
 # ---------------------------------------------------------
-# ۶. خروجی و گزارش‌گیری اکسل (حذف ستون‌های JSON خام و ترجمه کامل فارسی)
+# ۶. خروجی و گزارش‌گیری اکسل + قابلیت حذف رکوردها
 # ---------------------------------------------------------
 elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
-    st.header("📂 بایگانی اطلاعات و خروجی گزارش‌ها")
+    st.header("📂 بایگانی اطلاعات، خروجی و مدیریت رکوردها")
     
     conn = get_db_connection()
     
-    target_table = st.selectbox("انتخاب جدول جهت مشاهده و دریافت Excel:", 
+    target_table = st.selectbox("انتخاب جدول جهت مشاهده، دانلود Excel یا حذف رکورد:", 
                                 ["آنالیز پودر اولیه (powders)", "پودرهای بازیافت شده (recycled_powders)", "رکوردهای تولید (production)", "کنترل کیفیت (qc)", "محاسبه هزینه (cost_calculator)"])
     
     table_map = {
-        "آنالیز پودر اولیه (powders)": "powders",
-        "پودرهای بازیافت شده (recycled_powders)": "recycled_powders",
-        "رکوردهای تولید (production)": "production",
-        "کنترل کیفیت (qc)": "qc",
-        "محاسبه هزینه (cost_calculator)": "cost_calculator"
+        "آنالیز پودر اولیه (powders)": ("powders", "powder_code"),
+        "پودرهای بازیافت شده (recycled_powders)": ("recycled_powders", "id"),
+        "رکوردهای تولید (production)": ("production", "part_code"),
+        "کنترل کیفیت (qc)": ("qc", "part_code"),
+        "محاسبه هزینه (cost_calculator)": ("cost_calculator", "part_code")
     }
     
-    selected_tbl = table_map[target_table]
+    selected_tbl, pkey_col = table_map[target_table]
     df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
     
     # حذف ستون‌های حاوی ساختار خام JSON از دید کاربر در جدول بایگانی
@@ -679,21 +679,16 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
     
     # دیکشنری نگاشت جامع تمام ستون‌های لاتین به فارسی
     farsi_headers_map = {
-        # فرم پودر
         'powder_code': 'شماره ظرف پودر',
         'material': 'جنس پودر',
         'weight_g': 'وزن پودر (گرم)',
         'date': 'تاریخ ثبت',
-        
-        # پودر بازیافتی
         'id': 'شناسه',
         'recycled_batch_code': 'کد پارت بازیافت',
         'input_powder_g': 'پودر ورودی به دستگاه (گرم)',
         'unrecyclable_powder_g': 'پودر غیرقابل بازیافت (گرم)',
         'recycled_powder_g': 'پودر بازیافتی قابل استفاده (گرم)',
         'notes': 'توضیحات و ملاحظات',
-        
-        # فرم تولید
         'part_code': 'کد/شناسه قطعه',
         'part_name': 'نام قطعه',
         'quantity': 'تعداد روی صفحه',
@@ -715,13 +710,9 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
         'build_plate_post_wt_g': 'وزن صفحه ساخت بعد پرداخت (گرم)',
         'engraving_qty': 'تعداد حکاکی لیزر',
         'delivery_date': 'تاریخ تحویل',
-        
-        # کنترل کیفیت QC
         'qc_inspector': 'بازرس کنترل کیفیت',
         'qc_engineer': 'مسئول مهندسی کیفیت',
         'qa_manager': 'مدیر تضمین کیفیت',
-        
-        # محاسبه‌گر هزینه
         'powder_type': 'نوع پودر فلزی',
         'volume_cm3': 'حجم قطعه (cm3)',
         'net_weight_g': 'وزن خالص (گرم)',
@@ -752,15 +743,30 @@ elif choice == "📂 ۵. خروجی و گزارش‌گیری اکسل":
         farsi_df = clean_df.rename(columns=farsi_headers_map)
         st.table(farsi_df)
         
-        excel_filename = f"{selected_tbl}_export.xlsx"
-        farsi_df.to_excel(excel_filename, index=False)
-        with open(excel_filename, "rb") as f:
-            st.download_button(
-                label="📥 دانلود فایل اکسل جدول انتخابی",
-                data=f,
-                file_name=excel_filename,
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+        col_down, col_del = st.columns([2, 2])
+        
+        with col_down:
+            excel_filename = f"{selected_tbl}_export.xlsx"
+            farsi_df.to_excel(excel_filename, index=False)
+            with open(excel_filename, "rb") as f:
+                st.download_button(
+                    label="📥 دانلود فایل اکسل جدول",
+                    data=f,
+                    file_name=excel_filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                
+        with col_del:
+            with st.expander("🗑️ مدیریت و حذف رکورد از این جدول"):
+                item_options = df[pkey_col].tolist()
+                item_to_delete = st.selectbox(f"انتخاب شناسه/کد جهت حذف از جدول:", item_options)
+                
+                if st.button("⚠️ حذف رکورد انتخاب شده"):
+                    c = conn.cursor()
+                    c.execute(f"DELETE FROM {selected_tbl} WHERE {pkey_col}=?", (item_to_delete,))
+                    conn.commit()
+                    st.success(f"رکورد با کد {item_to_delete} با موفقیت حذف شد.")
+                    st.rerun()
     else:
         st.info("اطلاعاتی در این جدول ثبت نشده است.")
         
