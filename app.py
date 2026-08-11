@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: طراحی دقیق منوی سایدبار به صورت دکمه‌ای (مشابه تصویر) ---
+# --- استایل اختصاصی: راست‌چین‌سازی، فونت B Nazanin و طراحی دکمه‌های منو ---
 st.markdown("""
 <style>
     /* تعریف و فراخوانی فونت B Nazanin */
@@ -56,7 +56,7 @@ st.markdown("""
         text-align: right !important;
     }
 
-    /* --- استایل‌دهی دکمه‌های منوی سایدبار مشابه تصویر --- */
+    /* --- استایل‌دهی دکمه‌های منوی سایدبار --- */
     div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         display: flex;
         flex-direction: column;
@@ -77,14 +77,12 @@ st.markdown("""
         border: 1px solid #3b82f6 !important;
     }
 
-    /* هایلایت شدن دکمه فعال در منو */
     div[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"] {
         background-color: #334155 !important;
         border: 1px solid #475569 !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
     }
 
-    /* مخفی کردن دایره رادیو باتن اصلی برای ظاهری شبیه دکمه کاملا تمیز */
     div[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
         display: none !important;
     }
@@ -95,14 +93,17 @@ st.markdown("""
         border: 1px solid #334155 !important;
         border-radius: 10px !important;
         padding: 15px !important;
+        text-align: center !important;
     }
     [data-testid="stMetricLabel"] > div {
         color: #94a3b8 !important;
         font-size: 1.2rem !important;
+        justify-content: center !important;
     }
     [data-testid="stMetricValue"] > div {
         color: #38bdf8 !important;
-        font-size: 1.8rem !important;
+        font-size: 2.2rem !important;
+        justify-content: center !important;
     }
 
     /* دکمه‌های اصلی */
@@ -315,8 +316,9 @@ def get_db_connection():
 if os.path.exists("logo.png"):
     st.sidebar.image("logo.png", width=140)
 
-# --- طراحی جدید منوی سایدبار مطابق عکس ---
+# --- منوی سایدبار مطابق طراحی مورد نظر ---
 menu_options = [
+    "🏠 خانه",
     "📦 پودر",
     "🏭 فرم تولید",
     "❇️ کنترل کیفیت",
@@ -325,12 +327,54 @@ menu_options = [
     "🔍 بایگانی"
 ]
 
-choice = st.sidebar.radio("", menu_options, index=1)
+choice = st.sidebar.radio("", menu_options, index=0)
+
+# ---------------------------------------------------------
+# ۰. خانه (مطابق تصویر ارسالی)
+# ---------------------------------------------------------
+if choice == "🏠 خانه":
+    head_c1, head_col2 = st.columns([6, 1])
+    with head_c1:
+        st.title("🧩 سامانه بایگانی و مدیریت تولید قطعات چاپ سه بعدی (SLM)")
+        st.caption("این سامانه چهار فرم «پودر»، «فرم تولید»، «کنترل کیفیت (QC)» و «محاسبه‌گر قیمت» را از طریق کد ظرف پودر و کد قطعه به هم مرتبط می‌کند و امکان ثبت، ویرایش و جستجوی بایگانی را فراهم می‌سازد.")
+    with head_col2:
+        if os.path.exists("logo.png"):
+            st.image("logo.png", width=120)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # آمار زنده از دیتابیس
+    conn = get_db_connection()
+    powder_count = pd.read_sql_query("SELECT COUNT(*) as cnt FROM powders", conn)['cnt'].values[0] + pd.read_sql_query("SELECT COUNT(*) as cnt FROM nora_powders", conn)['cnt'].values[0]
+    prod_count = pd.read_sql_query("SELECT COUNT(*) as cnt FROM production", conn)['cnt'].values[0]
+    qc_count = pd.read_sql_query("SELECT COUNT(*) as cnt FROM qc", conn)['cnt'].values[0]
+    cost_count = pd.read_sql_query("SELECT COUNT(*) as cnt FROM cost_calculator", conn)['cnt'].values[0]
+    conn.close()
+
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("رکوردهای پودر", powder_count)
+    m2.metric("فرم‌های تولید", prod_count)
+    m3.metric("فرم‌های کنترل کیفیت", qc_count)
+    m4.metric("محاسبات هزینه", cost_count)
+
+    st.markdown("---")
+    st.subheader("راهنمای گردش کار")
+    st.markdown("""
+    1. **📦 پودر** — برای هر ظرف پودر خریداری‌شده یک رکورد با «کد ظرف پودر» ثبت کنید.
+    2. **🏭 فرم تولید** — برای هر قطعه، «کد قطعه» را تعریف کرده و «کد ظرف پودر» مرتبط را از لیست انتخاب کنید.
+    3. **❇️ کنترل کیفیت (QC)** — با انتخاب «کد قطعه»، نتائج بازرسی همان قطعه را ثبت می‌کنید.
+    4. **💰 محاسبه‌گر هزینه** — با انتخاب «کد قطعه»، اطلاعات فنی از فرم تولید خوانده و قیمت نهایی محاسبه می‌شود.
+    5. **🔍 بایگانی و جستجو** — همه رکوردها را مشاهده، ویرایش، حذف و خروجی اکسل بگیرید.
+    6. **⚙️ تنظیمات نرخ‌ها** — نرخ دلار، قیمت پودرها، دستمزدها و سایر نرخ‌های پایه را ویرایش کنید.
+    
+    <br>
+    <p style='color: #94a3b8; font-size: 1.1rem;'>از منوی سمت راست (نوار کناری) بین صفحات جابه‌جا شوید.</p>
+    """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # ۱. پودر
 # ---------------------------------------------------------
-if choice == "📦 پودر":
+elif choice == "📦 پودر":
     st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
     
     conn = get_db_connection()
@@ -731,6 +775,23 @@ elif choice == "🔍 بایگانی":
     
     conn = get_db_connection()
     
+    all_parts_df = pd.read_sql_query("SELECT part_code, part_name, powder_code, machine_model, quantity, date FROM production", conn)
+    
+    st.subheader("📋 لیست کلی تمامی قطعات ثبت‌شده")
+    if not all_parts_df.empty:
+        disp_all_parts = all_parts_df.rename(columns={
+            'part_code': 'کد قطعه',
+            'part_name': 'نام قطعه',
+            'powder_code': 'شماره ظرف پودر مصرفی',
+            'machine_model': 'مدل دستگاه',
+            'quantity': 'تعداد روی صفحه',
+            'date': 'تاریخ ساخت'
+        })
+        st.table(disp_all_parts)
+    else:
+        st.info("هنوز هیچ قطعه‌ای در سامانه ثبت نشده است.")
+        
+    st.markdown("---")
     st.subheader("🔎 استعلام پرونده جامع قطعه")
     search_code = st.text_input("کد قطعه را جهت استعلام کامل وارد کنید:")
     
