@@ -27,7 +27,7 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. راست‌چین‌سازی کامل کل برنامه و اعمال فونت */
+    /* ۱. راست‌چین‌سازی کامل کل برنامه، متون و فرم ورود */
     html, body, .stApp, div, p, span, label, input, select, button, textarea {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
@@ -38,11 +38,18 @@ st.markdown("""
         font-size: 1.2rem !important;
     }
     
-    h1 { font-size: 2.2rem !important; font-weight: bold; }
-    h2 { font-size: 1.8rem !important; font-weight: bold; }
-    h3 { font-size: 1.5rem !important; font-weight: bold; }
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'B Nazanin', 'Vazir' !important;
+        direction: rtl !important;
+        text-align: right !important;
+        font-weight: bold;
+    }
 
-    /* ۲. مخفی‌سازی کامل متن‌های راهنمای اضافی داخل کادرها */
+    h1 { font-size: 2.2rem !important; }
+    h2 { font-size: 1.8rem !important; }
+    h3 { font-size: 1.5rem !important; }
+
+    /* ۲. مخفی‌سازی متون راهنمای اضافی داخل کادرها */
     [data-testid="stInputInstruction"], 
     input::placeholder,
     textarea::placeholder {
@@ -56,15 +63,18 @@ st.markdown("""
         direction: ltr !important;
     }
 
-    /* ۴. راست‌چین کردن کامل جداول (Headers & Cells) */
-    table {
+    /* ۴. راست‌چین کردن کامل و اجباری تمامی جداول (Headers & Data Cells) */
+    table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
         font-size: 1.15rem !important;
         border-collapse: collapse !important;
-    }
-    th, td {
         text-align: right !important;
+    }
+    
+    th, td, table th, table td {
+        text-align: right !important;
+        direction: rtl !important;
         padding: 10px !important;
     }
 
@@ -140,7 +150,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# دیکشنری نگاشت جامع عناوین لاتین به فارسی
 FARSI_HEADERS_MAP = {
     'powder_code': 'شماره ظرف پودر',
     'material': 'جنس / نوع متریال پودر',
@@ -399,19 +408,17 @@ def logout_user():
     st.rerun()
 
 # ---------------------------------------------------------
-# صفحه ورود (با لوگو و متون کاملاً وسط‌چین)
+# صفحه ورود (کاملاً راست‌چین)
 # ---------------------------------------------------------
 if not st.session_state["authenticated"]:
     col_login_1, col_login_2, col_login_3 = st.columns([1, 2, 1])
     with col_login_2:
         st.markdown("<br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
-            l_col1, l_col2, l_col3 = st.columns([1, 2, 1])
-            with l_col2:
-                st.image("logo.png", width=180, use_container_width=True)
+            st.image("logo.png", width=160)
         
-        st.markdown("<h2 style='text-align: center;'>🔐 ورود به سامانه ساخت افزایشی (SLM)</h2>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #94a3b8;'>لطفاً نام کاربری و رمز عبور خود را وارد کنید:</p>", unsafe_allow_html=True)
+        st.title("🔐 ورود به سامانه ساخت افزایشی (SLM)")
+        st.caption("لطفاً نام کاربری و رمز عبور خود را وارد کنید:")
         
         with st.form("login_form"):
             username_input = st.text_input("نام کاربری (Username)", placeholder="")
