@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: مخفی‌سازی کامل متن‌های راهنما (Placeholder & Instructions) داخل کادرها ---
+# --- استایل اختصاصی: وسط‌چین کردن لوگو و پاک‌سازی کامل راهنماها ---
 st.markdown("""
 <style>
     @font-face {
@@ -45,7 +45,7 @@ st.markdown("""
         direction: ltr !important;
     }
 
-    /* پاک‌سازی و مخفی کردن راهنماهای داخل کادرهای ورودی (Instructions & Helpers) */
+    /* پاک‌سازی متون راهنمای داخل کادرهای ورودی */
     [data-testid="stInputInstruction"], 
     .st-emotion-cache-1pxeoh2,
     div[data-baseweb="input"] span,
@@ -53,6 +53,20 @@ st.markdown("""
         display: none !important;
         opacity: 0 !important;
         color: transparent !important;
+    }
+
+    /* استایل وسط‌چین کردن تصویر لوگو و فرم ورود */
+    .center-logo {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+
+    .center-text {
+        text-align: center !important;
+        width: 100%;
     }
 
     h1 { font-size: 2.3rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
@@ -396,16 +410,20 @@ def logout_user():
     st.rerun()
 
 # ---------------------------------------------------------
-# صفحه ورود (کادرهای کاملاً خالی بدون متن اضافی)
+# صفحه ورود (با لوگو و متون کاملاً وسط‌چین)
 # ---------------------------------------------------------
 if not st.session_state["authenticated"]:
     col_login_1, col_login_2, col_login_3 = st.columns([1, 2, 1])
     with col_login_2:
-        st.markdown("<br><br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
-            st.image("logo.png", width=140)
-        st.title("🔐 ورود به سامانه ساخت افزایشی (SLM)")
-        st.caption("لطفاً نام کاربری و رمز عبور خود را وارد کنید:")
+            # وسط‌چین کردن لوگوی صفحه ورود
+            l_col1, l_col2, l_col3 = st.columns([1, 2, 1])
+            with l_col2:
+                st.image("logo.png", width=180, use_container_width=True)
+        
+        st.markdown("<h2 style='text-align: center;'>🔐 ورود به سامانه ساخت افزایشی (SLM)</h2>", unsafe_allow_html=True)
+        st.markdown("<p style='text-align: center; color: #94a3b8;'>لطفاً نام کاربری و رمز عبور خود را وارد کنید:</p>", unsafe_allow_html=True)
         
         with st.form("login_form"):
             username_input = st.text_input("نام کاربری (Username)", placeholder="")
