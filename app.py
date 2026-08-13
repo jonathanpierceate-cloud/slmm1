@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل تمیز و بدون باگ انیمیشن/مرز سایدبار ---
+# --- استایل تمیز، بومی و بدون تداخل برای راست‌چین‌سازی کامل ---
 st.markdown("""
 <style>
     @font-face {
@@ -27,13 +27,15 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. فونت عمومی و راست‌چین‌سازی محتوای اصلی */
-    .main .block-container {
+    /* ۱. راست‌چین‌سازی محتوای اصلی و سایدبار بدون تداخل با کنترل‌های فریم‌ورک */
+    [data-testid="stMainBlockContainer"],
+    [data-testid="stSidebarUserContent"] {
         direction: rtl !important;
         text-align: right !important;
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
     }
 
+    /* ۲. تنظیم فونت عمومی متون و عناوین */
     h1, h2, h3, h4, h5, h6, p, label, button, table {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
@@ -48,15 +50,15 @@ st.markdown("""
     h2 { font-size: 1.8rem !important; font-weight: bold; }
     h3 { font-size: 1.5rem !important; font-weight: bold; }
 
-    /* ۲. راست‌چین‌سازی بومی ورودی‌ها بدون بهم زدن فریم‌ورک */
-    input, select, textarea {
+    /* ۳. راست‌چین‌سازی ورودی‌های متنی و عددی */
+    input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
         font-size: 1.2rem !important;
     }
 
-    /* ۳. راست‌چین کردن کامل جداول */
+    /* ۴. راست‌چین کردن کامل جداول */
     table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
@@ -65,23 +67,13 @@ st.markdown("""
         text-align: right !important;
     }
     
-    th, td {
+    th, td, table th, table td {
         text-align: right !important;
         direction: rtl !important;
         padding: 10px !important;
     }
 
-    /* ۴. تنظیمات استاندارد سایدبار (جلوگیری از ایجاد خط عمودی وسط صفحه) */
-    [data-testid="stSidebar"] {
-        border-left: none !important;
-        border-right: 1px solid #334155 !important;
-    }
-
-    [data-testid="stSidebarUserContent"] {
-        direction: rtl !important;
-        text-align: right !important;
-    }
-
+    /* ۵. استایل‌دهی دکمه‌های منوی سایدبار */
     div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         display: flex;
         flex-direction: column;
@@ -114,7 +106,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ۵. کارت‌های آمار */
+    /* ۶. کارت‌های آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -641,7 +633,7 @@ else:
                         c.execute("""INSERT OR REPLACE INTO nora_powders 
                                      (powder_code, material, weight_g, date)
                                      VALUES (?, ?, ?, ?)""",
-                                  (nora_powder_code, nora_material, nora_weight_g, nora_date))
+                              (nora_powder_code, nora_material, nora_weight_g, nora_date))
                         conn.commit()
                         st.success(f"پودر نورا با کد {nora_powder_code} با موفقیت ثبت شد.")
                         st.rerun()
