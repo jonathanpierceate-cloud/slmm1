@@ -17,54 +17,61 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- تابع عمومی ساخت فایل اکسل کاملاً راست‌چین و شکیل ---
-def export_to_styled_excel(df, sheet_name="گزارش"):
+# --- تابع عمومی ساخت فایل اکسل تک‌برگ یا چندبرگ راست‌چین و شکیل ---
+def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name=sheet_name)
-        workbook = writer.book
-        worksheet = writer.sheets[sheet_name]
+        for sheet_name, df in dict_of_dfs.items():
+            if df.empty:
+                df = pd.DataFrame(["اطلاعاتی ثبت نشده است"], columns=["وضعیت"])
+            
+            clean_sheet_name = sheet_name[:30].replace(":", "").replace("?", "").replace("*", "").replace("/", "").replace("\\", "")
+            df.to_excel(writer, index=False, sheet_name=clean_sheet_name)
+            worksheet = writer.sheets[clean_sheet_name]
 
-        # راست‌چین کردن کامل برگه اکسل (RTL)
-        worksheet.sheet_view.rightToLeft = True
+            # راست‌چین کردن کامل برگه اکسل (RTL)
+            worksheet.sheet_view.rightToLeft = True
 
-        # تعریف استایل‌ها
-        header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
-        header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
-        data_font = Font(name='B Nazanin', size=11)
-        align_right = Alignment(horizontal='right', vertical='center', wrap_text=True)
-        
-        thin_border = Border(
-            left=Side(style='thin', color='CBD5E1'),
-            right=Side(style='thin', color='CBD5E1'),
-            top=Side(style='thin', color='CBD5E1'),
-            bottom=Side(style='thin', color='CBD5E1')
-        )
+            # استایل‌ها
+            header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
+            header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
+            data_font = Font(name='B Nazanin', size=11)
+            align_right = Alignment(horizontal='right', vertical='center', wrap_text=True)
+            
+            thin_border = Border(
+                left=Side(style='thin', color='CBD5E1'),
+                right=Side(style='thin', color='CBD5E1'),
+                top=Side(style='thin', color='CBD5E1'),
+                bottom=Side(style='thin', color='CBD5E1')
+            )
 
-        # استایل هدرها
-        for col_num, col_name in enumerate(df.columns, 1):
-            cell = worksheet.cell(row=1, column=col_num)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-            cell.border = thin_border
-
-        # استایل داده‌ها
-        for row_num in range(2, len(df) + 2):
-            for col_num in range(1, len(df.columns) + 1):
-                cell = worksheet.cell(row=row_num, column=col_num)
-                cell.font = data_font
-                cell.alignment = align_right
+            # هدرها
+            for col_num, col_name in enumerate(df.columns, 1):
+                cell = worksheet.cell(row=1, column=col_num)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
                 cell.border = thin_border
 
-        # تنظیم عرض ستون‌ها
-        for col in worksheet.columns:
-            max_len = max(len(str(cell.value or '')) for cell in col)
-            col_letter = openpyxl.utils.get_column_letter(col[0].column)
-            worksheet.column_dimensions[col_letter].width = max(max_len + 5, 15)
+            # داده‌ها
+            for row_num in range(2, len(df) + 2):
+                for col_num in range(1, len(df.columns) + 1):
+                    cell = worksheet.cell(row=row_num, column=col_num)
+                    cell.font = data_font
+                    cell.alignment = align_right
+                    cell.border = thin_border
+
+            # عرض ستون‌ها
+            for col in worksheet.columns:
+                max_len = max(len(str(cell.value or '')) for cell in col)
+                col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                worksheet.column_dimensions[col_letter].width = max(max_len + 5, 15)
 
     output.seek(0)
     return output
+
+def export_to_styled_excel(df, sheet_name="گزارش"):
+    return export_to_styled_excel_multisheet({sheet_name: df})
 
 # --- استایل تمیز و راست‌چین CSS ---
 st.markdown("""
@@ -611,7 +618,6 @@ else:
                         else:
                             st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
                 with btn_c2:
-                    # دکمه خروجی اکسل پودر اولیه کنار دکمه ثبت
                     disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns=FARSI_HEADERS_MAP) if not powders_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                     excel_file = export_to_styled_excel(disp_powders, "پودرهای اولیه")
                     st.download_button(
@@ -666,7 +672,6 @@ else:
                         st.success("اطلاعات پودر بازیافتی با موفقیت ثبت شد.")
                         st.rerun()
                 with r_btn2:
-                    # دکمه خروجی اکسل پودر بازیافتی کنار دکمه ثبت
                     display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP) if not recycled_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                     excel_file_rec = export_to_styled_excel(display_recycled_df, "پودرهای بازیافتی")
                     st.download_button(
@@ -712,7 +717,6 @@ else:
                     else:
                         st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
             with n_btn2:
-                # دکمه خروجی اکسل پودر نورا کنار دکمه ثبت
                 disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP) if not nora_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                 excel_file_nora = export_to_styled_excel(disp_nora, "پودرهای نورا")
                 st.download_button(
@@ -829,7 +833,6 @@ else:
                     else:
                         st.error("لطفاً کد قطعه را مشخص کنید.")
             with p_btn2:
-                # دکمه خروجی اکسل رکوردهای تولید کنار دکمه ثبت
                 prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
                 clean_prod_df = prod_all_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP) if not prod_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                 excel_file_prod = export_to_styled_excel(clean_prod_df, "رکوردهای تولید")
@@ -913,7 +916,6 @@ else:
                     st.success("نتایج ارزیابی QC با موفقیت ذخیره شد.")
                     st.rerun()
             with qc_btn2:
-                # دکمه خروجی اکسل گزارشات QC کنار دکمه ثبت
                 qc_all_df = pd.read_sql_query("SELECT * FROM qc", conn)
                 clean_qc_df = qc_all_df.drop(columns=['qc_checks_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP) if not qc_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                 excel_file_qc = export_to_styled_excel(clean_qc_df, "گزارشات QC")
@@ -1060,7 +1062,6 @@ else:
                 else:
                     st.error("لطفاً شناسه قطعه را مشخص کنید.")
         with cost_btn2:
-            # دکمه خروجی اکسل محاسبات هزینه کنار دکمه ثبت
             cost_all_df = pd.read_sql_query("SELECT * FROM cost_calculator", conn)
             clean_cost_df = cost_all_df.rename(columns=FARSI_HEADERS_MAP) if not cost_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
             excel_file_cost = export_to_styled_excel(clean_cost_df, "برآورد هزینه‌ها")
@@ -1092,222 +1093,219 @@ else:
         
         current_rates = load_system_rates()
         
-        st.subheader("۱. قیمت پودرهای فلزی (ریال به ازای هر کیلوگرم)")
-        c1, c2 = st.columns(2)
-        with c1:
-            r_steel = st.number_input("پودر Steel 316", min_value=0.0, value=float(current_rates.get("powder_price_Steel_316", 120000000)))
-            r_ti = st.number_input("پودر Ti6Al4V", min_value=0.0, value=float(current_rates.get("powder_price_Ti6Al4V", 500000000)))
-        with c2:
-            r_inconel = st.number_input("پودر Inconel 718", min_value=0.0, value=float(current_rates.get("powder_price_Inconel_718", 300000000)))
-            r_hastelloy = st.number_input("پودر Hastelloy X", min_value=0.0, value=float(current_rates.get("powder_price_Hastelloy_X", 400000000)))
+        with st.form("settings_form"):
+            st.subheader("۱. قیمت پودرهای فلزی (ریال به ازای هر کیلوگرم)")
+            c1, c2 = st.columns(2)
+            with c1:
+                r_steel = st.number_input("پودر Steel 316", min_value=0.0, value=float(current_rates.get("powder_price_Steel_316", 120000000)))
+                r_ti = st.number_input("پودر Ti6Al4V", min_value=0.0, value=float(current_rates.get("powder_price_Ti6Al4V", 500000000)))
+            with c2:
+                r_inconel = st.number_input("پودر Inconel 718", min_value=0.0, value=float(current_rates.get("powder_price_Inconel_718", 300000000)))
+                r_hastelloy = st.number_input("پودر Hastelloy X", min_value=0.0, value=float(current_rates.get("powder_price_Hastelloy_X", 400000000)))
 
-        st.markdown("---")
-        st.subheader("۲. نرخ ساعتی استهلاک دستگاه‌ها (ریال / ساعت)")
-        m1, m2 = st.columns(2)
-        with m1:
-            r_depr_m120 = st.number_input("نرخ استهلاک دستگاه M120", min_value=0.0, value=float(current_rates.get("machine_depr_M120", 1250000)))
-        with m2:
-            r_depr_m300 = st.number_input("نرخ استهلاک دستگاه M300", min_value=0.0, value=float(current_rates.get("machine_depr_M300", 3125000)))
+            st.markdown("---")
+            st.subheader("۲. نرخ ساعتی استهلاک دستگاه‌ها (ریال / ساعت)")
+            m1, m2 = st.columns(2)
+            with m1:
+                r_depr_m120 = st.number_input("نرخ استهلاک دستگاه M120", min_value=0.0, value=float(current_rates.get("machine_depr_M120", 1250000)))
+            with m2:
+                r_depr_m300 = st.number_input("نرخ استهلاک دستگاه M300", min_value=0.0, value=float(current_rates.get("machine_depr_M300", 3125000)))
 
-        st.markdown("---")
-        st.subheader("۳. دستمزدهای نیروی انسانی (ریال / نفرساعت)")
-        w1, w2, w3 = st.columns(3)
-        with w1:
-            r_wage_designer = st.number_input("دستمزد طراح مهندسی", min_value=0.0, value=float(current_rates.get("wage_designer", 2500000)))
-        with w2:
-            r_wage_operator = st.number_input("دستمزد اپراتور دستگاه", min_value=0.0, value=float(current_rates.get("wage_operator", 1870000)))
-        with w3:
-            r_wage_qc = st.number_input("دستمزد مسئول کنترل کیفیت", min_value=0.0, value=float(current_rates.get("wage_qc", 2180000)))
+            st.markdown("---")
+            st.subheader("۳. دستمزدهای نیروی انسانی (ریال / نفرساعت)")
+            w1, w2, w3 = st.columns(3)
+            with w1:
+                r_wage_designer = st.number_input("دستمزد طراح مهندسی", min_value=0.0, value=float(current_rates.get("wage_designer", 2500000)))
+            with w2:
+                r_wage_operator = st.number_input("دستمزد اپراتور دستگاه", min_value=0.0, value=float(current_rates.get("wage_operator", 1870000)))
+            with w3:
+                r_wage_qc = st.number_input("دستمزد مسئول کنترل کیفیت", min_value=0.0, value=float(current_rates.get("wage_qc", 2180000)))
 
-        st.markdown("---")
-        st.subheader("۴. هزینه‌های جانبی، انرژی و مصارف کارگاهی")
-        u1, u2, u3 = st.columns(3)
-        with u1:
-            r_argon = st.number_input("نرخ گاز آرگون (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("argon_rate", 300000)))
-            r_electricity = st.number_input("نرخ برق مصرفی (ریال/کیلووات‌ساعت)", min_value=0.0, value=float(current_rates.get("electricity_rate", 50000)))
-        with u2:
-            r_post_process = st.number_input("عملیات پرداخت سطحی (ریال/ماشین‌ساعت)", min_value=0.0, value=float(current_rates.get("post_process_rate", 500000)))
-            r_qc_fixed = st.number_input("تست‌های QC ثابت (ریال/قطعه)", min_value=0.0, value=float(current_rates.get("qc_fixed_cost", 40000000)))
-        with u3:
-            r_ventilation = st.number_input("سیستم تهویه (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("ventilation_rate", 200000)))
-            r_chiller = st.number_input("آب خنک‌کاری چیلر (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("chiller_rate", 2500)))
+            st.markdown("---")
+            st.subheader("۴. هزینه‌های جانبی، انرژی و مصارف کارگاهی")
+            u1, u2, u3 = st.columns(3)
+            with u1:
+                r_argon = st.number_input("نرخ گاز آرگون (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("argon_rate", 300000)))
+                r_electricity = st.number_input("نرخ برق مصرفی (ریال/کیلووات‌ساعت)", min_value=0.0, value=float(current_rates.get("electricity_rate", 50000)))
+            with u2:
+                r_post_process = st.number_input("عملیات پرداخت سطحی (ریال/ماشین‌ساعت)", min_value=0.0, value=float(current_rates.get("post_process_rate", 500000)))
+                r_qc_fixed = st.number_input("تست‌های QC ثابت (ریال/قطعه)", min_value=0.0, value=float(current_rates.get("qc_fixed_cost", 40000000)))
+            with u3:
+                r_ventilation = st.number_input("سیستم تهویه (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("ventilation_rate", 200000)))
+                r_chiller = st.number_input("آب خنک‌کاری چیلر (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("chiller_rate", 2500)))
 
-        rate_btn1, rate_btn2 = st.columns([3, 2])
-        with rate_btn1:
-            save_rates_submit = st.button("💾 ذخیره تغییرات نرخ‌ها در پایگاه داده")
-            if save_rates_submit:
+            rate_btn1, rate_btn2 = st.columns([3, 2])
+            with rate_btn1:
+                save_rates_submit = st.form_submit_button("💾 ذخیره تغییرات نرخ‌ها در پایگاه داده")
+                if save_rates_submit:
+                    conn = get_db_connection()
+                    c = conn.cursor()
+                    updated_pairs = [
+                        ("powder_price_Steel_316", r_steel),
+                        ("powder_price_Ti6Al4V", r_ti),
+                        ("powder_price_Inconel_718", r_inconel),
+                        ("powder_price_Hastelloy_X", r_hastelloy),
+                        ("machine_depr_M120", r_depr_m120),
+                        ("machine_depr_M300", r_depr_m300),
+                        ("wage_designer", r_wage_designer),
+                        ("wage_operator", r_wage_operator),
+                        ("wage_qc", r_wage_qc),
+                        ("argon_rate", r_argon),
+                        ("electricity_rate", r_electricity),
+                        ("post_process_rate", r_post_process),
+                        ("qc_fixed_cost", r_qc_fixed),
+                        ("ventilation_rate", r_ventilation),
+                        ("chiller_rate", r_chiller)
+                    ]
+                    for k, val in updated_pairs:
+                        c.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (k, val))
+                    conn.commit()
+                    conn.close()
+                    st.success("تمام نرخ‌های جدید با موفقیت ذخیره شدند و در بخش «محاسبه‌گر هزینه» اعمال گردیدند.")
+                    st.rerun()
+            with rate_btn2:
                 conn = get_db_connection()
-                c = conn.cursor()
-                updated_pairs = [
-                    ("powder_price_Steel_316", r_steel),
-                    ("powder_price_Ti6Al4V", r_ti),
-                    ("powder_price_Inconel_718", r_inconel),
-                    ("powder_price_Hastelloy_X", r_hastelloy),
-                    ("machine_depr_M120", r_depr_m120),
-                    ("machine_depr_M300", r_depr_m300),
-                    ("wage_designer", r_wage_designer),
-                    ("wage_operator", r_wage_operator),
-                    ("wage_qc", r_wage_qc),
-                    ("argon_rate", r_argon),
-                    ("electricity_rate", r_electricity),
-                    ("post_process_rate", r_post_process),
-                    ("qc_fixed_cost", r_qc_fixed),
-                    ("ventilation_rate", r_ventilation),
-                    ("chiller_rate", r_chiller)
-                ]
-                for k, val in updated_pairs:
-                    c.execute("INSERT OR REPLACE INTO system_settings (key, value) VALUES (?, ?)", (k, val))
-                conn.commit()
+                rates_df = pd.read_sql_query("SELECT * FROM system_settings", conn)
                 conn.close()
-                st.success("تمام نرخ‌های جدید با موفقیت ذخیره شدند و در بخش «محاسبه‌گر هزینه» اعمال گردیدند.")
-                st.rerun()
-        with rate_btn2:
-            # دکمه خروجی اکسل نرخ‌های پایه
-            conn = get_db_connection()
-            rates_df = pd.read_sql_query("SELECT * FROM system_settings", conn)
-            conn.close()
-            rates_df.columns = ["عنوان پارامتر (کلید)", "مقدار / نرخ پایه (ریال)"]
-            excel_file_rates = export_to_styled_excel(rates_df, "نرخ‌های پایه")
-            st.download_button(
-                label="📥 دانلود خروجی اکسل کامل نرخ‌های پایه",
-                data=excel_file_rates,
-                file_name="system_rates.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="btn_down_rates_top"
-            )
+                rates_df.columns = ["عنوان پارامتر (کلید)", "مقدار / نرخ پایه (ریال)"]
+                excel_file_rates = export_to_styled_excel(rates_df, "نرخ‌های پایه")
+                st.download_button(
+                    label="📥 دانلود خروجی اکسل کامل نرخ‌های پایه",
+                    data=excel_file_rates,
+                    file_name="system_rates.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_rates_top"
+                )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل
+    # ۶. بایگانی و گزارش‌گیری اکسل (پیشرفته و چندانتخابی)
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
         
         conn = get_db_connection()
         
-        all_parts_df = pd.read_sql_query("SELECT part_code, part_name, powder_code, machine_model, quantity, date FROM production", conn)
+        # ۱. بخش استعلام شناسنامه و پرونده جامع قطعه
+        st.subheader("🔎 استعلام شناسنامه و پرونده جامع قطعه")
+        existing_parts_list = pd.read_sql_query("SELECT part_code FROM production", conn)['part_code'].tolist()
         
-        st.subheader("📋 لیست کلی تمامی قطعات ثبت‌شده")
-        if not all_parts_df.empty:
-            disp_all_parts = all_parts_df.rename(columns={
-                'part_code': 'کد قطعه',
-                'part_name': 'نام قطعه',
-                'powder_code': 'شماره ظرف پودر مصرفی',
-                'machine_model': 'مدل دستگاه',
-                'quantity': 'تعداد روی صفحه',
-                'date': 'تاریخ ساخت'
-            })
-            st.table(disp_all_parts)
-        else:
-            st.info("هنوز هیچ قطعه‌ای در سامانه ثبت نشده است.")
-            
-        st.markdown("---")
-        st.subheader("🔎 استعلام پرونده جامع قطعه")
-        search_code = st.text_input("کد قطعه را جهت استعلام کامل وارد کنید:")
+        c_search1, c_search2 = st.columns([3, 1])
+        with c_search1:
+            search_code = st.selectbox("انتخاب یا جستجوی کد قطعه جهت مشاهده شناسنامه کامل:", ["-- انتخاب کنید --"] + existing_parts_list)
         
-        if search_code:
+        if search_code and search_code != "-- انتخاب کنید --":
             prod_df = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(search_code,))
             qc_df = pd.read_sql_query("SELECT * FROM qc WHERE part_code=?", conn, params=(search_code,))
             cost_df = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(search_code,))
             
             if not prod_df.empty:
-                st.success(f"اطلاعات قطعه {search_code} یافت شد.")
-                tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر", "🔬 کنترل کیفیت (QC)", "💰 برآورد مالی"])
+                st.success(f"اطلاعات کامل پرونده قطعه {search_code} یافت شد.")
+                tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر مصرفی", "🔬 کنترل کیفیت (QC)", "💰 برآورد مالی"])
                 
                 json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
+                
+                # آماده‌سازی دیتافریم‌های شناسه جهت دانلود اکسل
+                sheet_dict_part = {}
                 
                 with tab1:
                     st.subheader("مشخصات فنی و فرآیند ساخت")
                     clean_prod = prod_df.drop(columns=[c for c in json_cols_to_drop if c in prod_df.columns])
-                    disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP).T
-                    disp_prod.columns = ["مقدار / مقدار ثبت شده"]
-                    st.table(disp_prod)
+                    disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP)
+                    st.table(disp_prod.T)
+                    sheet_dict_part["فرآیند تولید"] = disp_prod
                     
                 with tab2:
-                    powder_code = prod_df['powder_code'].values[0]
-                    powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code,))
+                    powder_code_val = prod_df['powder_code'].values[0]
+                    powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code_val,))
                     if powder_df.empty:
-                        powder_df = pd.read_sql_query("SELECT * FROM nora_powders WHERE powder_code=?", conn, params=(powder_code,))
+                        powder_df = pd.read_sql_query("SELECT * FROM nora_powders WHERE powder_code=?", conn, params=(powder_code_val,))
                     
                     if not powder_df.empty:
-                        st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code}`")
+                        st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code_val}`")
                         clean_powder = powder_df.drop(columns=[c for c in json_cols_to_drop if c in powder_df.columns])
-                        disp_powder = clean_powder.rename(columns=FARSI_HEADERS_MAP).T
-                        disp_powder.columns = ["مشخصات پودر"]
-                        st.table(disp_powder)
+                        disp_powder = clean_powder.rename(columns=FARSI_HEADERS_MAP)
+                        st.table(disp_powder.T)
+                        sheet_dict_part["اطلاعات پودر"] = disp_powder
                     else:
                         st.warning("اطلاعات پودر متناظر یافت نشد.")
                         
                 with tab3:
                     if not qc_df.empty:
                         clean_qc = qc_df.drop(columns=[c for c in json_cols_to_drop if c in qc_df.columns])
-                        disp_qc = clean_qc.rename(columns=FARSI_HEADERS_MAP).T
-                        disp_qc.columns = ["اطلاعات ارزیابی کیفیت"]
-                        st.table(disp_qc)
+                        disp_qc = clean_qc.rename(columns=FARSI_HEADERS_MAP)
+                        st.table(disp_qc.T)
+                        sheet_dict_part["کنترل کیفیت QC"] = disp_qc
                     else:
                         st.info("فرم کنترل کیفیت برای این قطعه هنوز ثبت نشده است.")
                         
                 with tab4:
                     if not cost_df.empty:
-                        disp_cost = cost_df.rename(columns=FARSI_HEADERS_MAP).T
-                        disp_cost.columns = ["جزئیات مالی و برآورد هزینه"]
-                        st.table(disp_cost)
+                        disp_cost = cost_df.rename(columns=FARSI_HEADERS_MAP)
+                        st.table(disp_cost.T)
                         st.metric("قیمت نهایی فروش (ریال)", f"{cost_df['final_price'].values[0]:,.0f}")
+                        sheet_dict_part["برآورد مالی"] = disp_cost
                     else:
                         st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
-            else:
-                st.error("قطعه‌ای با این کد یافت نشد.")
                 
+                # دکمه دانلود اکسل جامع قطعه (شامل تمام شیت‌های مرتبط با قطعه)
+                excel_part_all = export_to_styled_excel_multisheet(sheet_dict_part, f"پرونده_{search_code}.xlsx")
+                st.download_button(
+                    label=f"📥 دانلود خروجی اکسل پرونده جامع قطعه {search_code}",
+                    data=excel_part_all,
+                    file_name=f"part_dossier_{search_code}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_part_full"
+                )
+
         st.markdown("---")
-        st.subheader("📂 مشاهده و دانلود جداول پایگاه داده")
-        target_table = st.selectbox("انتخاب جدول جهت مشاهده، دانلود Excel یا حذف رکورد:", 
-                                    ["آنالیز پودر اولیه (powders)", "پودرهای بازیافت شده (recycled_powders)", "پودرهای خریداری شده از نورا (nora_powders)", "رکوردهای تولید (production)", "کنترل کیفیت (qc)", "محاسبه هزینه (cost_calculator)"])
         
-        table_map = {
-            "آنالیز پودر اولیه (powders)": ("powders", "powder_code"),
-            "پودرهای بازیافت شده (recycled_powders)": ("recycled_powders", "id"),
-            "پودرهای خریداری شده از نورا (nora_powders)": ("nora_powders", "powder_code"),
-            "رکوردهای تولید (production)": ("production", "part_code"),
-            "کنترل کیفیت (qc)": ("qc", "part_code"),
-            "محاسبه هزینه (cost_calculator)": ("cost_calculator", "part_code")
+        # ۲. بخش مشاهده و خروجی چندانتخابی جداول دیتابیس
+        st.subheader("📂 مشاهده و دانلود چندانتخابی جداول پایگاه داده")
+        
+        table_options_map = {
+            "آنالیز پودر اولیه (powders)": "powders",
+            "پودرهای بازیافت شده (recycled_powders)": "recycled_powders",
+            "پودرهای خریداری شده از نورا (nora_powders)": "nora_powders",
+            "رکوردهای تولید (production)": "production",
+            "کنترل کیفیت (qc)": "qc",
+            "محاسبه هزینه (cost_calculator)": "cost_calculator"
         }
         
-        selected_tbl, pkey_col = table_map[target_table]
-        df = pd.read_sql_query(f"SELECT * FROM {selected_tbl}", conn)
+        selected_table_labels = st.multiselect(
+            "جداول مورد نظر جهت مشاهده و خروجی اکسل را انتخاب کنید (یک یا چند مورد):",
+            list(table_options_map.keys()),
+            default=list(table_options_map.keys())[:1]
+        )
         
-        json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
-        clean_df = df.drop(columns=[col for col in json_cols_to_drop if col in df.columns])
-        
-        if not clean_df.empty:
-            farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
-            st.table(farsi_df)
+        if selected_table_labels:
+            multisheet_export_dict = {}
+            json_cols_to_drop = ['checklist_json', 'qc_checks_json', 'finishing_json']
             
-            col_down, col_del = st.columns([2, 2])
-            
-            with col_down:
-                excel_file = export_to_styled_excel(farsi_df, target_table.split(' ')[0])
-                st.download_button(
-                    label="📥 دانلود فایل اکسل جدول انتخاب شده",
-                    data=excel_file,
-                    file_name=f"{selected_tbl}_export.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="btn_down_archive_tbl"
-                )
-                    
-            with col_del:
-                if role == "مدیریت":
-                    with st.expander("🗑️ مدیریت و حذف رکورد از این جدول"):
-                        item_options = df[pkey_col].tolist()
-                        item_to_delete = st.selectbox(f"انتخاب شناسه/کد جهت حذف از جدول:", item_options)
-                        
-                        if st.button("⚠️ حذف رکورد انتخاب شده"):
-                            c = conn.cursor()
-                            c.execute(f"DELETE FROM {selected_tbl} WHERE {pkey_col}=?", (item_to_delete,))
-                            conn.commit()
-                            st.success(f"رکورد با کد {item_to_delete} با موفقیت حذف شد.")
-                            st.rerun()
-        else:
-            st.info("اطلاعاتی در این جدول ثبت نشده است.")
-            
+            for tbl_label in selected_table_labels:
+                tbl_name = table_options_map[tbl_label]
+                raw_df = pd.read_sql_query(f"SELECT * FROM {tbl_name}", conn)
+                clean_df = raw_df.drop(columns=[col for col in json_cols_to_drop if col in raw_df.columns], errors='ignore')
+                farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
+                
+                st.markdown(f"#### 📊 {tbl_label}")
+                if not farsi_df.empty:
+                    st.table(farsi_df)
+                else:
+                    st.info(f"جدول {tbl_label} در حال حاضر خالی است.")
+                
+                multisheet_export_dict[tbl_label.split(' ')[0]] = farsi_df
+
+            # دکمه دانلود اکسل جامع برای جداول انتخاب شده
+            st.markdown("---")
+            combined_excel_file = export_to_styled_excel_multisheet(multisheet_export_dict, "archive_export.xlsx")
+            st.download_button(
+                label=f"📥 دانلود فایل اکسل جامع ({len(selected_table_labels)} جدول انتخاب شده)",
+                data=combined_excel_file,
+                file_name="selected_tables_archive.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_multiselect_archive"
+            )
+
         conn.close()
 
     # ---------------------------------------------------------
