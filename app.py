@@ -5,6 +5,9 @@ import json
 import hashlib
 from datetime import datetime
 import os
+import io
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 
 # تنظیمات اولیه صفحه Streamlit
 st.set_page_config(
@@ -13,6 +16,55 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- تابع عمومی ساخت فایل اکسل کاملاً راست‌چین و شکیل ---
+def export_to_styled_excel(df, sheet_name="گزارش"):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name=sheet_name)
+        workbook = writer.book
+        worksheet = writer.sheets[sheet_name]
+
+        # راست‌چین کردن کامل برگه اکسل (RTL)
+        worksheet.sheet_view.rightToLeft = True
+
+        # تعریف استایل‌های شکیل
+        header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
+        header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
+        data_font = Font(name='B Nazanin', size=11)
+        align_right = Alignment(horizontal='right', vertical='center', wrap_text=True)
+        
+        thin_border = Border(
+            left=Side(style='thin', color='CBD5E1'),
+            right=Side(style='thin', color='CBD5E1'),
+            top=Side(style='thin', color='CBD5E1'),
+            bottom=Side(style='thin', color='CBD5E1')
+        )
+
+        # اعمال استایل هدرها
+        for col_num, col_name in enumerate(df.columns, 1):
+            cell = worksheet.cell(row=1, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = thin_border
+
+        # اعمال استایل داده‌ها
+        for row_num in range(2, len(df) + 2):
+            for col_num in range(1, len(df.columns) + 1):
+                cell = worksheet.cell(row=row_num, column=col_num)
+                cell.font = data_font
+                cell.alignment = align_right
+                cell.border = thin_border
+
+        # تنظیم خودکار عرض ستون‌ها
+        for col in worksheet.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            col_letter = openpyxl.utils.get_column_letter(col[0].column)
+            worksheet.column_dimensions[col_letter].width = max(max_len + 5, 15)
+
+    output.seek(0)
+    return output
 
 # --- استایل تمیز، بومی و بدون تداخل برای راست‌چین‌سازی کامل ---
 st.markdown("""
@@ -27,7 +79,6 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. راست‌چین‌سازی محتوای اصلی و سایدبار بدون تداخل با کنترل‌های فریم‌ورک */
     [data-testid="stMainBlockContainer"],
     [data-testid="stSidebarUserContent"] {
         direction: rtl !important;
@@ -35,7 +86,6 @@ st.markdown("""
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
     }
 
-    /* ۲. تنظیم فونت عمومی متون و عناوین */
     h1, h2, h3, h4, h5, h6, p, label, button, table {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
@@ -50,7 +100,6 @@ st.markdown("""
     h2 { font-size: 1.8rem !important; font-weight: bold; }
     h3 { font-size: 1.5rem !important; font-weight: bold; }
 
-    /* ۳. راست‌چین‌سازی ورودی‌های متنی و عددی */
     input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
@@ -58,7 +107,6 @@ st.markdown("""
         font-size: 1.2rem !important;
     }
 
-    /* ۴. راست‌چین کردن کامل جداول */
     table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
@@ -73,7 +121,6 @@ st.markdown("""
         padding: 10px !important;
     }
 
-    /* ۵. استایل‌دهی دکمه‌های منوی سایدبار */
     div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         display: flex;
         flex-direction: column;
@@ -106,7 +153,6 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ۶. کارت‌های آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -566,6 +612,15 @@ else:
             if not powders_df.empty:
                 disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns=FARSI_HEADERS_MAP)
                 st.table(disp_powders)
+                
+                # دانلود اکسل بخش پودر اولیه
+                excel_file = export_to_styled_excel(disp_powders, "پودرهای اولیه")
+                st.download_button(
+                    label="📥 دانلود فایل اکسل پودرهای اولیه",
+                    data=excel_file,
+                    file_name="powders_initial.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
             else:
                 st.info("هیچ پودر اولیه ای در سیستم ثبت نشده است.")
 
@@ -611,6 +666,15 @@ else:
             if not recycled_df.empty:
                 display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(display_recycled_df)
+                
+                # دانلود اکسل بخش پودرهای بازیافتی
+                excel_file = export_to_styled_excel(display_recycled_df, "پودرهای بازیافتی")
+                st.download_button(
+                    label="📥 دانلود فایل اکسل پودرهای بازیافتی",
+                    data=excel_file,
+                    file_name="powders_recycled.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
             else:
                 st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
 
@@ -633,7 +697,7 @@ else:
                         c.execute("""INSERT OR REPLACE INTO nora_powders 
                                      (powder_code, material, weight_g, date)
                                      VALUES (?, ?, ?, ?)""",
-                              (nora_powder_code, nora_material, nora_weight_g, nora_date))
+                                  (nora_powder_code, nora_material, nora_weight_g, nora_date))
                         conn.commit()
                         st.success(f"پودر نورا با کد {nora_powder_code} با موفقیت ثبت شد.")
                         st.rerun()
@@ -645,6 +709,15 @@ else:
             if not nora_df.empty:
                 disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(disp_nora)
+                
+                # دانلود اکسل پودرهای نورا
+                excel_file = export_to_styled_excel(disp_nora, "پودرهای نورا")
+                st.download_button(
+                    label="📥 دانلود فایل اکسل پودرهای نورا",
+                    data=excel_file,
+                    file_name="powders_nora.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
             else:
                 st.info("هنوز پودری از نورا ثبت نشده است.")
 
@@ -744,6 +817,25 @@ else:
                         st.rerun()
                     else:
                         st.error("لطفاً کد قطعه را مشخص کنید.")
+                        
+        st.markdown("---")
+        st.subheader("📂 جدول کلی فرم‌های تولید ثبت‌شده")
+        prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
+        if not prod_all_df.empty:
+            clean_prod_df = prod_all_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
+            st.table(clean_prod_df)
+            
+            # دانلود اکسل فرم‌های تولید
+            excel_file = export_to_styled_excel(clean_prod_df, "رکوردهای تولید")
+            st.download_button(
+                label="📥 دانلود فایل اکسل رکوردهای تولید",
+                data=excel_file,
+                file_name="production_records.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.info("هنوز هیج فرم تولیدی ثبت نشده است.")
+
         conn.close()
 
     # ---------------------------------------------------------
@@ -804,6 +896,25 @@ else:
                                datetime.now().strftime("%Y-%m-%d"), json.dumps(qc_data, ensure_ascii=False), inspector, engineer, manager))
                     conn.commit()
                     st.success("نتایج ارزیابی QC با موفقیت ذخیره شد.")
+                    
+        st.markdown("---")
+        st.subheader("📂 جدول کلی گزارش‌های ارزیابی کیفیت (QC)")
+        qc_all_df = pd.read_sql_query("SELECT * FROM qc", conn)
+        if not qc_all_df.empty:
+            clean_qc_df = qc_all_df.drop(columns=['qc_checks_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
+            st.table(clean_qc_df)
+            
+            # دانلود اکسل فرم‌های QC
+            excel_file = export_to_styled_excel(clean_qc_df, "گزارشات QC")
+            st.download_button(
+                label="📥 دانلود فایل اکسل گزارشات QC",
+                data=excel_file,
+                file_name="qc_reports.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.info("هنوز هیچ فرم ارزیابی کیفیتی ثبت نشده است.")
+
         conn.close()
 
     # ---------------------------------------------------------
@@ -925,6 +1036,25 @@ else:
                 st.success("محاسبه هزینه با موفقیت ثبت شد.")
             else:
                 st.error("لطفاً شناسه قطعه را مشخص کنید.")
+                
+        st.markdown("---")
+        st.subheader("📂 جدول کلی محاسبات هزینه ثبت‌شده")
+        cost_all_df = pd.read_sql_query("SELECT * FROM cost_calculator", conn)
+        if not cost_all_df.empty:
+            clean_cost_df = cost_all_df.rename(columns=FARSI_HEADERS_MAP)
+            st.table(clean_cost_df)
+            
+            # دانلود اکسل محاسبات هزینه
+            excel_file = export_to_styled_excel(clean_cost_df, "برآورد هزینه‌ها")
+            st.download_button(
+                label="📥 دانلود فایل اکسل برآورد هزینه‌ها",
+                data=excel_file,
+                file_name="cost_calculations.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+        else:
+            st.info("هنوز هیچ برآورد هزینه‌ای ثبت نشده است.")
+
         conn.close()
 
     # ---------------------------------------------------------
@@ -1113,15 +1243,13 @@ else:
             col_down, col_del = st.columns([2, 2])
             
             with col_down:
-                excel_filename = f"{selected_tbl}_export.xlsx"
-                farsi_df.to_excel(excel_filename, index=False)
-                with open(excel_filename, "rb") as f:
-                    st.download_button(
-                        label="📥 دانلود فایل اکسل جدول",
-                        data=f,
-                        file_name=excel_filename,
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                    )
+                excel_file = export_to_styled_excel(farsi_df, target_table.split(' ')[0])
+                st.download_button(
+                    label="📥 دانلود فایل اکسل جدول",
+                    data=excel_file,
+                    file_name=f"{selected_tbl}_export.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
                     
             with col_del:
                 if role == "مدیریت":
