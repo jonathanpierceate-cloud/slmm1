@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اختصاصی: وسط‌چین کردن لوگو و پاک‌سازی کامل راهنماها ---
+# --- استایل یکپارچه، تمیز و کاملاً راست‌چین (RTL) ---
 st.markdown("""
 <style>
     @font-face {
@@ -27,52 +27,48 @@ st.markdown("""
         font-style: normal;
     }
 
-    html, body, .stApp {
-        font-family: 'B Nazanin', 'Vazir', sans-serif;
-        direction: rtl;
-        text-align: right;
+    /* ۱. راست‌چین‌سازی کامل کل برنامه و اعمال فونت */
+    html, body, .stApp, div, p, span, label, input, select, button, textarea {
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
+        direction: rtl !important;
+        text-align: right !important;
     }
 
-    p, span, label, input, select, button, [data-testid="stMarkdownContainer"] {
-        font-family: 'B Nazanin', 'Vazir', sans-serif;
-        font-size: 1.25rem;
-        direction: rtl;
-        text-align: right;
+    p, span, label, input, select, button {
+        font-size: 1.2rem !important;
     }
     
+    h1 { font-size: 2.2rem !important; font-weight: bold; }
+    h2 { font-size: 1.8rem !important; font-weight: bold; }
+    h3 { font-size: 1.5rem !important; font-weight: bold; }
+
+    /* ۲. مخفی‌سازی کامل متن‌های راهنمای اضافی داخل کادرها */
+    [data-testid="stInputInstruction"], 
+    input::placeholder,
+    textarea::placeholder {
+        display: none !important;
+        opacity: 0 !important;
+    }
+
+    /* ۳. اصلاح آیکون‌های سیستم جهت جلوگیری از نمایش متن کد لاتین آن‌ها */
     [data-testid="stIconMaterial"], .aria-hidden, i, [class^="st-"] {
         font-family: 'Material Symbols Outlined', 'Material Icons' !important;
         direction: ltr !important;
     }
 
-    /* پاک‌سازی متون راهنمای داخل کادرهای ورودی */
-    [data-testid="stInputInstruction"], 
-    .st-emotion-cache-1pxeoh2,
-    div[data-baseweb="input"] span,
-    input::placeholder {
-        display: none !important;
-        opacity: 0 !important;
-        color: transparent !important;
+    /* ۴. راست‌چین کردن کامل جداول (Headers & Cells) */
+    table {
+        direction: rtl !important;
+        width: 100% !important;
+        font-size: 1.15rem !important;
+        border-collapse: collapse !important;
+    }
+    th, td {
+        text-align: right !important;
+        padding: 10px !important;
     }
 
-    /* استایل وسط‌چین کردن تصویر لوگو و فرم ورود */
-    .center-logo {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        width: 100%;
-        margin-bottom: 10px;
-    }
-
-    .center-text {
-        text-align: center !important;
-        width: 100%;
-    }
-
-    h1 { font-size: 2.3rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
-    h2 { font-size: 1.9rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
-    h3 { font-size: 1.6rem !important; font-family: 'B Nazanin', 'Vazir' !important; }
-
+    /* ۵. استایل‌دهی دکمه‌های منوی سایدبار */
     [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
         display: none !important;
     }
@@ -112,6 +108,7 @@ st.markdown("""
         display: none !important;
     }
 
+    /* ۶. کارت‌های شاخص آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -140,18 +137,10 @@ st.markdown("""
         padding: 10px 20px !important;
         border: none !important;
     }
-
-    table {
-        font-size: 1.15rem !important;
-        direction: rtl !important;
-        text-align: right !important;
-    }
-    th, td {
-        text-align: right !important;
-    }
 </style>
 """, unsafe_allow_html=True)
 
+# دیکشنری نگاشت جامع عناوین لاتین به فارسی
 FARSI_HEADERS_MAP = {
     'powder_code': 'شماره ظرف پودر',
     'material': 'جنس / نوع متریال پودر',
@@ -417,7 +406,6 @@ if not st.session_state["authenticated"]:
     with col_login_2:
         st.markdown("<br>", unsafe_allow_html=True)
         if os.path.exists("logo.png"):
-            # وسط‌چین کردن لوگوی صفحه ورود
             l_col1, l_col2, l_col3 = st.columns([1, 2, 1])
             with l_col2:
                 st.image("logo.png", width=180, use_container_width=True)
