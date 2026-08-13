@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل یکپارچه، تمیز و کاملاً راست‌چین (RTL) ---
+# --- استایل اصلاح‌شده: حذف کامل و قطعی تمام راهنماها و متون اضافی داخل کادرها ---
 st.markdown("""
 <style>
     @font-face {
@@ -27,43 +27,47 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. راست‌چین‌سازی کامل کل برنامه، متون و فرم ورود */
-    html, body, .stApp, div, p, span, label, input, select, button, textarea {
+    /* ۱. اعمال فونت و راست‌چین‌سازی فقط روی عناصر متنی استاندارد */
+    html, body, .stApp, p, span, label, h1, h2, h3, h4, h5, h6, table, button {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
     }
 
-    p, span, label, input, select, button {
-        font-size: 1.2rem !important;
-    }
-    
-    h1, h2, h3, h4, h5, h6 {
-        font-family: 'B Nazanin', 'Vazir' !important;
+    input, select, textarea {
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
-        font-weight: bold;
+        font-size: 1.2rem !important;
     }
 
-    h1 { font-size: 2.2rem !important; }
-    h2 { font-size: 1.8rem !important; }
-    h3 { font-size: 1.5rem !important; }
+    p, span, label, button {
+        font-size: 1.2rem !important;
+    }
 
-    /* ۲. مخفی‌سازی متون راهنمای اضافی داخل کادرها */
-    [data-testid="stInputInstruction"], 
-    input::placeholder,
-    textarea::placeholder {
+    h1 { font-size: 2.2rem !important; font-weight: bold; }
+    h2 { font-size: 1.8rem !important; font-weight: bold; }
+    h3 { font-size: 1.5rem !important; font-weight: bold; }
+
+    /* ۲. حذف کامل متن راهنمای Press Enter و آیکون متنی visibility */
+    [data-testid="stInputInstruction"],
+    .st-emotion-cache-1pxeoh2,
+    .stInputInstruction,
+    small {
         display: none !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        width: 0 !important;
         opacity: 0 !important;
     }
 
-    /* ۳. اصلاح آیکون‌های سیستم جهت جلوگیری از نمایش متن کد لاتین آن‌ها */
-    [data-testid="stIconMaterial"], .aria-hidden, i, [class^="st-"] {
-        font-family: 'Material Symbols Outlined', 'Material Icons' !important;
-        direction: ltr !important;
+    /* پاک‌سازی Placeholderها */
+    input::placeholder, textarea::placeholder {
+        color: transparent !important;
+        opacity: 0 !important;
     }
 
-    /* ۴. راست‌چین کردن کامل و اجباری تمامی جداول (Headers & Data Cells) */
+    /* ۳. راست‌چین کردن کامل جداول */
     table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
@@ -78,7 +82,7 @@ st.markdown("""
         padding: 10px !important;
     }
 
-    /* ۵. استایل‌دهی دکمه‌های منوی سایدبار */
+    /* ۴. استایل‌دهی دکمه‌های منوی سایدبار */
     [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
         display: none !important;
     }
@@ -118,7 +122,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ۶. کارت‌های شاخص آمار */
+    /* ۵. کارت‌های شاخص آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -408,7 +412,7 @@ def logout_user():
     st.rerun()
 
 # ---------------------------------------------------------
-# صفحه ورود (کاملاً راست‌چین)
+# صفحه ورود (کادرهای ۱۰۰٪ راست‌چین و پاک‌سازی‌شده)
 # ---------------------------------------------------------
 if not st.session_state["authenticated"]:
     col_login_1, col_login_2, col_login_3 = st.columns([1, 2, 1])
@@ -421,8 +425,8 @@ if not st.session_state["authenticated"]:
         st.caption("لطفاً نام کاربری و رمز عبور خود را وارد کنید:")
         
         with st.form("login_form"):
-            username_input = st.text_input("نام کاربری (Username)", placeholder="")
-            password_input = st.text_input("رمز عبور (Password)", type="password", placeholder="")
+            username_input = st.text_input("نام کاربری (Username)")
+            password_input = st.text_input("رمز عبور (Password)", type="password")
             submit_login = st.form_submit_button("🔑 ورود به سامانه")
             
             if submit_login:
@@ -538,7 +542,7 @@ else:
             with st.expander("➕ ثبت / ویرایش پودر جدید", expanded=True):
                 col1, col2 = st.columns(2)
                 with col1:
-                    powder_code = st.text_input("کد/شماره ظرف پودر فلز (مانند: PWD-316-01)", placeholder="")
+                    powder_code = st.text_input("کد/شماره ظرف پودر فلز (مانند: PWD-316-01)")
                     material = st.selectbox("جنس پودر", ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"])
                 with col2:
                     weight_g = st.number_input("وزن پودر (گرم)", min_value=0.0, value=10000.0)
@@ -557,7 +561,7 @@ else:
                     c1, c2, c3 = st.columns([3, 2, 4])
                     with c1: st.write(f"**{item}**")
                     with c2: status = st.selectbox("وضعیت", ["تایید", "رد"], key=item)
-                    with c3: note = st.text_input("ملاحظات / توضیحات", key=f"note_{item}", placeholder="")
+                    with c3: note = st.text_input("ملاحظات / توضیحات", key=f"note_{item}")
                     qc_results[item] = {"status": status, "note": note}
                     
                 if st.button("💾 ذخیره در بایگانی پودر اولیه"):
@@ -596,14 +600,14 @@ else:
                     with rc1:
                         selected_source = st.selectbox("شماره/کد ظرف پودر مبدا (خریداری‌شده اولیه / نورا)", combined_source_powders)
                         clean_source_code = selected_source.split(" [")[0] if selected_source else ""
-                        recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)", placeholder="")
+                        recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)")
                         input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=5000.0)
                     with rc2:
                         unrecyclable_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=200.0)
                         recycled_powder_g = input_powder_g - unrecyclable_powder_g
                         st.metric("مقدار پودر بازیافت‌شده قابل استفاده (گرم)", f"{recycled_powder_g:,.1f}")
                         rec_date = st.date_input("تاریخ بازیافت").strftime("%Y-%m-%d")
-                        rec_notes = st.text_input("توضیحات و ملاحظات غربال‌گری / الک", placeholder="")
+                        rec_notes = st.text_input("توضیحات و ملاحظات غربال‌گری / الک")
                     
                     rec_submit = st.form_submit_button("💾 ثبت رکورد پودر بازیافتی")
                     if rec_submit:
@@ -632,7 +636,7 @@ else:
             with st.form("nora_powder_form"):
                 nc1, nc2 = st.columns(2)
                 with nc1:
-                    nora_powder_code = st.text_input("کد/شماره ظرف پودر نورا (مانند: NORA-PWD-01)", placeholder="")
+                    nora_powder_code = st.text_input("کد/شماره ظرف پودر نورا (مانند: NORA-PWD-01)")
                     nora_material = st.selectbox("نوع متریال / جنس پودر", ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"], key="nora_mat")
                 with nc2:
                     nora_weight_g = st.number_input("مقدار / وزن پودر (گرم)", min_value=0.0, value=10000.0, key="nora_wt")
@@ -692,8 +696,8 @@ else:
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     default_part_code = edit_data.get("part_code", "") if mode == "ویرایش قطعه موجود" else ""
-                    part_code = st.text_input("کد قطعه (شناسه یکتا)", value=default_part_code, disabled=(mode == "ویرایش قطعه موجود"), placeholder="")
-                    part_name = st.text_input("نام قطعه", value=edit_data.get("part_name", ""), placeholder="")
+                    part_code = st.text_input("کد قطعه (شناسه یکتا)", value=default_part_code, disabled=(mode == "ویرایش قطعه موجود"))
+                    part_name = st.text_input("نام قطعه", value=edit_data.get("part_name", ""))
                 with col2:
                     default_powder_index = all_powders.index(edit_data["powder_code"]) if mode == "ویرایش قطعه موجود" and edit_data.get("powder_code") in all_powders else 0
                     powder_code = st.selectbox("شماره ظرف پودر مصرفی", all_powders, index=default_powder_index)
@@ -712,10 +716,10 @@ else:
                     build_time_hrs = st.number_input("زمان تولید (ساعت)", min_value=0.0, value=float(edit_data.get("build_time_hrs", 0.0)))
                     downtime_hrs = st.number_input("زمان توقف حین ساخت (ساعت)", min_value=0.0, value=float(edit_data.get("downtime_hrs", 0.0)))
                 with tc2:
-                    start_date = st.text_input("تاریخ شروع", value=edit_data.get("start_date", date_str), placeholder="")
-                    start_time = st.text_input("ساعت شروع", value=edit_data.get("start_time", "08:00"), placeholder="")
-                    end_date = st.text_input("تاریخ پایان", value=edit_data.get("end_date", date_str), placeholder="")
-                    end_time = st.text_input("ساعت پایان", value=edit_data.get("end_time", "16:00"), placeholder="")
+                    start_date = st.text_input("تاریخ شروع", value=edit_data.get("start_date", date_str))
+                    start_time = st.text_input("ساعت شروع", value=edit_data.get("start_time", "08:00"))
+                    end_date = st.text_input("تاریخ پایان", value=edit_data.get("end_date", date_str))
+                    end_time = st.text_input("ساعت پایان", value=edit_data.get("end_time", "16:00"))
                 with tc3:
                     setup_time_hrs = st.number_input("زمان آماده‌سازی دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("setup_time_hrs", 0.0)))
                     cleaning_time_hrs = st.number_input("زمان تمیزکاری دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("cleaning_time_hrs", 0.0)))
@@ -730,7 +734,7 @@ else:
                     final_part_g = st.number_input("وزن قطعه نهایی (گرم)", min_value=0.0, value=float(edit_data.get("final_part_g", 0.0)))
                     filter_pct = st.number_input("درصد فیلتر دستگاه (%)", min_value=0.0, max_value=100.0, value=float(edit_data.get("filter_percentage", 0.0)))
                 with mc2:
-                    plate_code = st.text_input("کد صفحه ساخت", value=edit_data.get("build_plate_code", ""), placeholder="")
+                    plate_code = st.text_input("کد صفحه ساخت", value=edit_data.get("build_plate_code", ""))
                     plate_init_wt = st.number_input("وزن اولیه صفحه ساخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_init_wt_g", 0.0)))
                     plate_post_wt = st.number_input("وزن صفحه ساخت پس از پرداخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_post_wt_g", 0.0)))
                     
@@ -796,15 +800,15 @@ else:
                     q1, q2, q3 = st.columns([3, 2, 4])
                     with q1: st.write(f"**{t_title}**")
                     with q2: res = st.selectbox("نتیجه", ["تایید", "رد"], key=t_title)
-                    with q3: note = st.text_input("ملاحظات", key=f"qc_n_{t_title}", placeholder="")
+                    with q3: note = st.text_input("ملاحظات", key=f"qc_n_{t_title}")
                     qc_data[t_title] = {"result": res, "type": t_type, "note": note}
                     
                 st.markdown("---")
                 st.subheader("👥 مسئولین و تاییدکنندگان")
                 sc1, sc2, sc3 = st.columns(3)
-                with sc1: inspector = st.text_input("بازرس کنترل کیفیت", placeholder="")
-                with sc2: engineer = st.text_input("مسئول فنی / مهندسی کیفیت", placeholder="")
-                with sc3: manager = st.text_input("مدیر تضمین کیفیت", placeholder="")
+                with sc1: inspector = st.text_input("بازرس کنترل کیفیت")
+                with sc2: engineer = st.text_input("مسئول فنی / مهندسی کیفیت")
+                with sc3: manager = st.text_input("مدیر تضمین کیفیت")
                 
                 qc_submit = st.form_submit_button("💾 ثبت نهایی فرم QC")
                 if qc_submit:
@@ -873,8 +877,8 @@ else:
         st.subheader("📥 مشخصات فنی و ورودی‌های قطعه")
         c1, c2, c3 = st.columns(3)
         with c1:
-            p_code = st.text_input("شناسه/کد قطعه", value=selected_part if selected_part != "جدید" else "", placeholder="")
-            p_name = st.text_input("نام قطعه", value=def_part_name, placeholder="")
+            p_code = st.text_input("شناسه/کد قطعه", value=selected_part if selected_part != "جدید" else "")
+            p_name = st.text_input("نام قطعه", value=def_part_name)
             powder_type = st.selectbox("نوع پودر فلزی", list(RATES["density"].keys()))
         with c2:
             vol_cm3 = st.number_input("حجم قطعه (cm3)", min_value=0.0, value=50.0)
@@ -1043,7 +1047,7 @@ else:
             
         st.markdown("---")
         st.subheader("🔎 استعلام پرونده جامع قطعه")
-        search_code = st.text_input("کد قطعه را جهت استعلام کامل وارد کنید:", placeholder="")
+        search_code = st.text_input("کد قطعه را جهت استعلام کامل وارد کنید:")
         
         if search_code:
             prod_df = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(search_code,))
@@ -1172,10 +1176,10 @@ else:
             with st.form("add_user_form"):
                 u_col1, u_col2 = st.columns(2)
                 with u_col1:
-                    new_username = st.text_input("نام کاربری جدید (لاتین)", placeholder="")
-                    new_password = st.text_input("رمز عبور", type="password", placeholder="")
+                    new_username = st.text_input("نام کاربری جدید (لاتین)")
+                    new_password = st.text_input("رمز عبور", type="password")
                 with u_col2:
-                    new_fullname = st.text_input("نام و نام خانوادگی", placeholder="")
+                    new_fullname = st.text_input("نام و نام خانوادگی")
                     new_role = st.selectbox("سطح دسترسی / نقش", ["مدیریت", "اپراتور و طراح", "کنترل کیفیت", "بازرگانی"])
                 
                 submit_new_user = st.form_submit_button("💾 ثبت کاربر جدید")
@@ -1199,10 +1203,10 @@ else:
                 with st.form("edit_user_form"):
                     e_col1, e_col2 = st.columns(2)
                     with e_col1:
-                        st.text_input("نام کاربری", value=user_info['username'], disabled=True, placeholder="")
-                        edit_password = st.text_input("رمز عبور جدید (در صورت عدم تغییر خالی بگذارید)", type="password", placeholder="")
+                        st.text_input("نام کاربری", value=user_info['username'], disabled=True)
+                        edit_password = st.text_input("رمز عبور جدید (در صورت عدم تغییر خالی بگذارید)", type="password")
                     with e_col2:
-                        edit_fullname = st.text_input("نام و نام خانوادگی", value=user_info['full_name'], placeholder="")
+                        edit_fullname = st.text_input("نام و نام خانوادگی", value=user_info['full_name'])
                         roles_list = ["مدیریت", "اپراتور و طراح", "کنترل کیفیت", "بازرگانی"]
                         default_role_idx = roles_list.index(user_info['role']) if user_info['role'] in roles_list else 0
                         edit_role = st.selectbox("سطح دسترسی / نقش", roles_list, index=default_role_idx)
