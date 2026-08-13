@@ -171,13 +171,13 @@ st.markdown("""
         justify-content: center !important;
     }
 
-    .stButton>button {
+    .stButton>button, .stDownloadButton>button {
         width: 100%;
         background-color: #2563eb !important;
         color: #ffffff !important;
         border-radius: 8px !important;
         font-weight: bold !important;
-        font-size: 1.3rem !important;
+        font-size: 1.2rem !important;
         padding: 10px 20px !important;
         border: none !important;
     }
@@ -565,6 +565,7 @@ else:
         conn = get_db_connection()
         powders_df = pd.read_sql_query("SELECT * FROM powders", conn)
         nora_df = pd.read_sql_query("SELECT * FROM nora_powders", conn)
+        recycled_df = pd.read_sql_query("SELECT * FROM recycled_powders", conn)
         
         sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده", "🏭 ۳- پودرهای خریداری شده از نورا"])
         
@@ -594,34 +595,38 @@ else:
                     with c3: note = st.text_input("ملاحظات / توضیحات", key=f"note_{item}")
                     qc_results[item] = {"status": status, "note": note}
                     
-                if st.button("💾 ذخیره در بایگانی پودر اولیه"):
-                    if powder_code:
-                        c = conn.cursor()
-                        c.execute("""INSERT OR REPLACE INTO powders 
-                                     (powder_code, material, weight_g, date, checklist_json)
-                                     VALUES (?, ?, ?, ?, ?)""",
-                                  (powder_code, material, weight_g, date_str, json.dumps(qc_results, ensure_ascii=False)))
-                        conn.commit()
-                        st.success(f"اطلاعات پودر {powder_code} با موفقیت ذخیره شد.")
-                        st.rerun()
-                    else:
-                        st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
+                btn_c1, btn_c2 = st.columns([3, 2])
+                with btn_c1:
+                    save_pwd_init = st.button("💾 ذخیره در بایگانی پودر اولیه")
+                    if save_pwd_init:
+                        if powder_code:
+                            c = conn.cursor()
+                            c.execute("""INSERT OR REPLACE INTO powders 
+                                         (powder_code, material, weight_g, date, checklist_json)
+                                         VALUES (?, ?, ?, ?, ?)""",
+                                      (powder_code, material, weight_g, date_str, json.dumps(qc_results, ensure_ascii=False)))
+                            conn.commit()
+                            st.success(f"اطلاعات پودر {powder_code} با موفقیت ذخیره شد.")
+                            st.rerun()
+                        else:
+                            st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
+                with btn_c2:
+                    # دکمه خروجی اکسل پودر اولیه کنار دکمه ثبت
+                    disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns=FARSI_HEADERS_MAP) if not powders_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                    excel_file = export_to_styled_excel(disp_powders, "پودرهای اولیه")
+                    st.download_button(
+                        label="📥 دانلود خروجی اکسل کامل پودرهای اولیه",
+                        data=excel_file,
+                        file_name="powders_initial.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="btn_down_pwd_init_top"
+                    )
                         
             st.markdown("---")
             st.subheader("📂 جدول پودرهای اولیه خریداری شده")
             if not powders_df.empty:
                 disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns=FARSI_HEADERS_MAP)
                 st.table(disp_powders)
-                
-                # دانلود اکسل پودرهای اولیه در انتهای جدول
-                excel_file = export_to_styled_excel(disp_powders, "پودرهای اولیه")
-                st.download_button(
-                    label="📥 دانلود خروجی اکسل کامل پودرهای اولیه",
-                    data=excel_file,
-                    file_name="powders_initial.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="btn_down_pwd_init"
-                )
             else:
                 st.info("هیچ پودر اولیه ای در سیستم ثبت نشده است.")
 
@@ -635,21 +640,22 @@ else:
             if not combined_source_powders:
                 st.warning("ابتدا باید حداقل یک ظرف پودر اولیه یا پودر نورا ثبت کرده باشید.")
             else:
-                with st.form("recycled_powder_form"):
-                    rc1, rc2 = st.columns(2)
-                    with rc1:
-                        selected_source = st.selectbox("شماره/کد ظرف پودر مبدا (خریداری‌شده اولیه / نورا)", combined_source_powders)
-                        clean_source_code = selected_source.split(" [")[0] if selected_source else ""
-                        recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)")
-                        input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=5000.0)
-                    with rc2:
-                        unrecyclable_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=200.0)
-                        recycled_powder_g = input_powder_g - unrecyclable_powder_g
-                        st.metric("مقدار پودر بازیافت‌شده قابل استفاده (گرم)", f"{recycled_powder_g:,.1f}")
-                        rec_date = st.date_input("تاریخ بازیافت").strftime("%Y-%m-%d")
-                        rec_notes = st.text_input("توضیحات و ملاحظات غربال‌گری / الک")
-                    
-                    rec_submit = st.form_submit_button("💾 ثبت رکورد پودر بازیافتی")
+                rc1, rc2 = st.columns(2)
+                with rc1:
+                    selected_source = st.selectbox("شماره/کد ظرف پودر مبدا (خریداری‌شده اولیه / نورا)", combined_source_powders)
+                    clean_source_code = selected_source.split(" [")[0] if selected_source else ""
+                    recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)")
+                    input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=5000.0)
+                with rc2:
+                    unrecyclable_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=200.0)
+                    recycled_powder_g = input_powder_g - unrecyclable_powder_g
+                    st.metric("مقدار پودر بازیافت‌شده قابل استفاده (گرم)", f"{recycled_powder_g:,.1f}")
+                    rec_date = st.date_input("تاریخ بازیافت").strftime("%Y-%m-%d")
+                    rec_notes = st.text_input("توضیحات و ملاحظات غربال‌گری / الک")
+                
+                r_btn1, r_btn2 = st.columns([3, 2])
+                with r_btn1:
+                    rec_submit = st.button("💾 ثبت رکورد پودر بازیافتی")
                     if rec_submit:
                         c = conn.cursor()
                         c.execute("""INSERT INTO recycled_powders 
@@ -659,40 +665,40 @@ else:
                         conn.commit()
                         st.success("اطلاعات پودر بازیافتی با موفقیت ثبت شد.")
                         st.rerun()
+                with r_btn2:
+                    # دکمه خروجی اکسل پودر بازیافتی کنار دکمه ثبت
+                    display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP) if not recycled_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                    excel_file_rec = export_to_styled_excel(display_recycled_df, "پودرهای بازیافتی")
+                    st.download_button(
+                        label="📥 دانلود خروجی اکسل کامل پودرهای بازیافتی",
+                        data=excel_file_rec,
+                        file_name="powders_recycled.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="btn_down_pwd_rec_top"
+                    )
 
             st.markdown("---")
             st.subheader("📊 جدول بایگانی پودرهای بازیافت شده")
-            recycled_df = pd.read_sql_query("SELECT * FROM recycled_powders", conn)
-            
             if not recycled_df.empty:
                 display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(display_recycled_df)
-                
-                # دانلود اکسل پودرهای بازیافتی در انتهای جدول
-                excel_file = export_to_styled_excel(display_recycled_df, "پودرهای بازیافتی")
-                st.download_button(
-                    label="📥 دانلود خروجی اکسل کامل پودرهای بازیافتی",
-                    data=excel_file,
-                    file_name="powders_recycled.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="btn_down_pwd_rec"
-                )
             else:
                 st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
 
         with sub_tab3:
             st.subheader("🏭 پودرهای خریداری شده از نورا (ثبت سریع)")
             
-            with st.form("nora_powder_form"):
-                nc1, nc2 = st.columns(2)
-                with nc1:
-                    nora_powder_code = st.text_input("کد/شماره ظرف پودر نورا (مانند: NORA-PWD-01)")
-                    nora_material = st.selectbox("نوع متریال / جنس پودر", ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"], key="nora_mat")
-                with nc2:
-                    nora_weight_g = st.number_input("مقدار / وزن پودر (گرم)", min_value=0.0, value=10000.0, key="nora_wt")
-                    nora_date = st.date_input("تاریخ ورود/تحویل", key="nora_dt").strftime("%Y-%m-%d")
-                    
-                nora_submit = st.form_submit_button("💾 ثبت پودر نورا در بایگانی")
+            nc1, nc2 = st.columns(2)
+            with nc1:
+                nora_powder_code = st.text_input("کد/شماره ظرف پودر نورا (مانند: NORA-PWD-01)")
+                nora_material = st.selectbox("نوع متریال / جنس پودر", ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"], key="nora_mat")
+            with nc2:
+                nora_weight_g = st.number_input("مقدار / وزن پودر (گرم)", min_value=0.0, value=10000.0, key="nora_wt")
+                nora_date = st.date_input("تاریخ ورود/تحویل", key="nora_dt").strftime("%Y-%m-%d")
+                
+            n_btn1, n_btn2 = st.columns([3, 2])
+            with n_btn1:
+                nora_submit = st.button("💾 ثبت پودر نورا در بایگانی")
                 if nora_submit:
                     if nora_powder_code:
                         c = conn.cursor()
@@ -705,22 +711,23 @@ else:
                         st.rerun()
                     else:
                         st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
+            with n_btn2:
+                # دکمه خروجی اکسل پودر نورا کنار دکمه ثبت
+                disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP) if not nora_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                excel_file_nora = export_to_styled_excel(disp_nora, "پودرهای نورا")
+                st.download_button(
+                    label="📥 دانلود خروجی اکسل کامل پودرهای نورا",
+                    data=excel_file_nora,
+                    file_name="powders_nora.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_pwd_nora_top"
+                )
 
             st.markdown("---")
             st.subheader("📊 جدول پودرهای خریداری شده از نورا")
             if not nora_df.empty:
                 disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(disp_nora)
-                
-                # دانلود اکسل پودرهای نورا در انتهای جدول
-                excel_file = export_to_styled_excel(disp_nora, "پودرهای نورا")
-                st.download_button(
-                    label="📥 دانلود خروجی اکسل کامل پودرهای نورا",
-                    data=excel_file,
-                    file_name="powders_nora.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                    key="btn_down_pwd_nora"
-                )
             else:
                 st.info("هنوز پودری از نورا ثبت نشده است.")
 
@@ -752,53 +759,54 @@ else:
         if not all_powders:
             st.warning("جهت ثبت فرم تولید، ابتدا باید حداقل یک پودر در بخش ۱ ثبت شده باشد.")
         else:
-            with st.form("prod_form"):
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    default_part_code = edit_data.get("part_code", "") if mode == "ویرایش قطعه موجود" else ""
-                    part_code = st.text_input("کد قطعه (شناسه یکتا)", value=default_part_code, disabled=(mode == "ویرایش قطعه موجود"))
-                    part_name = st.text_input("نام قطعه", value=edit_data.get("part_name", ""))
-                with col2:
-                    default_powder_index = all_powders.index(edit_data["powder_code"]) if mode == "ویرایش قطعه موجود" and edit_data.get("powder_code") in all_powders else 0
-                    powder_code = st.selectbox("شماره ظرف پودر مصرفی", all_powders, index=default_powder_index)
-                    
-                    machine_options = ["M120", "M300", "سایر"]
-                    default_machine_index = machine_options.index(edit_data["machine_model"]) if mode == "ویرایش قطعه موجود" and edit_data.get("machine_model") in machine_options else 0
-                    machine_model = st.selectbox("مدل دستگاه", machine_options, index=default_machine_index)
-                with col3:
-                    quantity = st.number_input("تعداد روی صفحه ساخت", min_value=1, value=int(edit_data.get("quantity", 1)))
-                    date_str = st.date_input("تاریخ ساخت", value=datetime.strptime(edit_data.get("date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")).strftime("%Y-%m-%d")
-                    
-                st.markdown("---")
-                st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت")
-                tc1, tc2, tc3 = st.columns(3)
-                with tc1:
-                    build_time_hrs = st.number_input("زمان تولید (ساعت)", min_value=0.0, value=float(edit_data.get("build_time_hrs", 0.0)))
-                    downtime_hrs = st.number_input("زمان توقف حین ساخت (ساعت)", min_value=0.0, value=float(edit_data.get("downtime_hrs", 0.0)))
-                with tc2:
-                    start_date = st.text_input("تاریخ شروع", value=edit_data.get("start_date", date_str))
-                    start_time = st.text_input("ساعت شروع", value=edit_data.get("start_time", "08:00"))
-                    end_date = st.text_input("تاریخ پایان", value=edit_data.get("end_date", date_str))
-                    end_time = st.text_input("ساعت پایان", value=edit_data.get("end_time", "16:00"))
-                with tc3:
-                    setup_time_hrs = st.number_input("زمان آماده‌سازی دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("setup_time_hrs", 0.0)))
-                    cleaning_time_hrs = st.number_input("زمان تمیزکاری دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("cleaning_time_hrs", 0.0)))
-                    
-                st.markdown("---")
-                st.subheader("⚖️ ۲- پارامترهای متریال و وزن")
-                mc1, mc2 = st.columns(2)
-                with mc1:
-                    input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=float(edit_data.get("input_powder_g", 0.0)))
-                    waste_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=float(edit_data.get("waste_powder_g", 0.0)))
-                    part_with_support_g = st.number_input("وزن قطعه با ساپورت (گرم)", min_value=0.0, value=float(edit_data.get("part_with_support_g", 0.0)))
-                    final_part_g = st.number_input("وزن قطعه نهایی (گرم)", min_value=0.0, value=float(edit_data.get("final_part_g", 0.0)))
-                    filter_pct = st.number_input("درصد فیلتر دستگاه (%)", min_value=0.0, max_value=100.0, value=float(edit_data.get("filter_percentage", 0.0)))
-                with mc2:
-                    plate_code = st.text_input("کد صفحه ساخت", value=edit_data.get("build_plate_code", ""))
-                    plate_init_wt = st.number_input("وزن اولیه صفحه ساخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_init_wt_g", 0.0)))
-                    plate_post_wt = st.number_input("وزن صفحه ساخت پس از پرداخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_post_wt_g", 0.0)))
-                    
-                submitted = st.form_submit_button("💾 ذخیره تغییرات / ثبت رکورد تولید")
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                default_part_code = edit_data.get("part_code", "") if mode == "ویرایش قطعه موجود" else ""
+                part_code = st.text_input("کد قطعه (شناسه یکتا)", value=default_part_code, disabled=(mode == "ویرایش قطعه موجود"))
+                part_name = st.text_input("نام قطعه", value=edit_data.get("part_name", ""))
+            with col2:
+                default_powder_index = all_powders.index(edit_data["powder_code"]) if mode == "ویرایش قطعه موجود" and edit_data.get("powder_code") in all_powders else 0
+                powder_code = st.selectbox("شماره ظرف پودر مصرفی", all_powders, index=default_powder_index)
+                
+                machine_options = ["M120", "M300", "سایر"]
+                default_machine_index = machine_options.index(edit_data["machine_model"]) if mode == "ویرایش قطعه موجود" and edit_data.get("machine_model") in machine_options else 0
+                machine_model = st.selectbox("مدل دستگاه", machine_options, index=default_machine_index)
+            with col3:
+                quantity = st.number_input("تعداد روی صفحه ساخت", min_value=1, value=int(edit_data.get("quantity", 1)))
+                date_str = st.date_input("تاریخ ساخت", value=datetime.strptime(edit_data.get("date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")).strftime("%Y-%m-%d")
+                
+            st.markdown("---")
+            st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت")
+            tc1, tc2, tc3 = st.columns(3)
+            with tc1:
+                build_time_hrs = st.number_input("زمان تولید (ساعت)", min_value=0.0, value=float(edit_data.get("build_time_hrs", 0.0)))
+                downtime_hrs = st.number_input("زمان توقف حین ساخت (ساعت)", min_value=0.0, value=float(edit_data.get("downtime_hrs", 0.0)))
+            with tc2:
+                start_date = st.text_input("تاریخ شروع", value=edit_data.get("start_date", date_str))
+                start_time = st.text_input("ساعت شروع", value=edit_data.get("start_time", "08:00"))
+                end_date = st.text_input("تاریخ پایان", value=edit_data.get("end_date", date_str))
+                end_time = st.text_input("ساعت پایان", value=edit_data.get("end_time", "16:00"))
+            with tc3:
+                setup_time_hrs = st.number_input("زمان آماده‌سازی دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("setup_time_hrs", 0.0)))
+                cleaning_time_hrs = st.number_input("زمان تمیزکاری دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("cleaning_time_hrs", 0.0)))
+                
+            st.markdown("---")
+            st.subheader("⚖️ ۲- پارامترهای متریال و وزن")
+            mc1, mc2 = st.columns(2)
+            with mc1:
+                input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=float(edit_data.get("input_powder_g", 0.0)))
+                waste_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=float(edit_data.get("waste_powder_g", 0.0)))
+                part_with_support_g = st.number_input("وزن قطعه با ساپورت (گرم)", min_value=0.0, value=float(edit_data.get("part_with_support_g", 0.0)))
+                final_part_g = st.number_input("وزن قطعه نهایی (گرم)", min_value=0.0, value=float(edit_data.get("final_part_g", 0.0)))
+                filter_pct = st.number_input("درصد فیلتر دستگاه (%)", min_value=0.0, max_value=100.0, value=float(edit_data.get("filter_percentage", 0.0)))
+            with mc2:
+                plate_code = st.text_input("کد صفحه ساخت", value=edit_data.get("build_plate_code", ""))
+                plate_init_wt = st.number_input("وزن اولیه صفحه ساخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_init_wt_g", 0.0)))
+                plate_post_wt = st.number_input("وزن صفحه ساخت پس از پرداخت (گرم)", min_value=0.0, value=float(edit_data.get("build_plate_post_wt_g", 0.0)))
+                
+            p_btn1, p_btn2 = st.columns([3, 2])
+            with p_btn1:
+                submitted = st.button("💾 ذخیره تغییرات / ثبت رکورد تولید")
                 if submitted:
                     target_code = default_part_code if mode == "ویرایش قطعه موجود" else part_code
                     if target_code:
@@ -820,6 +828,18 @@ else:
                         st.rerun()
                     else:
                         st.error("لطفاً کد قطعه را مشخص کنید.")
+            with p_btn2:
+                # دکمه خروجی اکسل رکوردهای تولید کنار دکمه ثبت
+                prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
+                clean_prod_df = prod_all_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP) if not prod_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                excel_file_prod = export_to_styled_excel(clean_prod_df, "رکوردهای تولید")
+                st.download_button(
+                    label="📥 دانلود خروجی اکسل کامل رکوردهای تولید",
+                    data=excel_file_prod,
+                    file_name="production_records.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_prod_top"
+                )
                         
         st.markdown("---")
         st.subheader("📂 جدول تمامی رکوردهای تولید قبلی")
@@ -827,16 +847,6 @@ else:
         if not prod_all_df.empty:
             clean_prod_df = prod_all_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_prod_df)
-            
-            # دانلود اکسل فرم‌های تولید در انتهای صفحه
-            excel_file = export_to_styled_excel(clean_prod_df, "رکوردهای تولید")
-            st.download_button(
-                label="📥 دانلود خروجی اکسل کامل رکوردهای تولید",
-                data=excel_file,
-                file_name="production_records.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="btn_down_prod_all"
-            )
         else:
             st.info("هنوز هیچ فرم تولیدی ثبت نشده است.")
 
@@ -859,38 +869,39 @@ else:
             
             st.info(f"**نام قطعه:** {part_info['part_name']} | **دستگاه:** {part_info['machine_model']} | **شماره ظرف پودر:** {part_info['powder_code']}")
             
-            with st.form("qc_form"):
-                st.subheader("📋 تست‌ها و بازرسی‌های کیفی")
-                tests = [
-                    ("1.1.1 ظاهر سطح و عیوب قابل رؤیت", "چشمی"),
-                    ("1.1.2 کیفیت حذف ساپورت", "چشمی"),
-                    ("1.1.3 زبری سطح (Ra)", "ابزار زبری‌سنج"),
-                    ("2.1.1 ابعاد بحرانی", "کولیس/CMM"),
-                    ("2.1.2 تختی، هم‌محوری، عمودیت و GD&T", "CMM/ژئومتریک"),
-                    ("2.1.3 انطباق با مدل CAD", "اسکن سه بعدی"),
-                    ("3.1.1 تخلخل/ترک/ناپیوستگی", "NDT"),
-                    ("4.1.1 استحکام کششی / تسلیم", "تست مکانیکی"),
-                    ("4.1.2 سختی", "سختی‌سنج"),
-                    ("4.1.3 چگالی نسبی / تخلخل", "دانسیته‌سنج"),
-                    ("4.1.4 ریزساختار و کیفیت ذوب", "متالوگرافی")
-                ]
+            st.subheader("📋 تست‌ها و بازرسی‌های کیفی")
+            tests = [
+                ("1.1.1 ظاهر سطح و عیوب قابل رؤیت", "چشمی"),
+                ("1.1.2 کیفیت حذف ساپورت", "چشمی"),
+                ("1.1.3 زبری سطح (Ra)", "ابزار زبری‌سنج"),
+                ("2.1.1 ابعاد بحرانی", "کولیس/CMM"),
+                ("2.1.2 تختی، هم‌محوری، عمودیت و GD&T", "CMM/ژئومتریک"),
+                ("2.1.3 انطباق با مدل CAD", "اسکن سه بعدی"),
+                ("3.1.1 تخلخل/ترک/ناپیوستگی", "NDT"),
+                ("4.1.1 استحکام کششی / تسلیم", "تست مکانیکی"),
+                ("4.1.2 سختی", "سختی‌سنج"),
+                ("4.1.3 چگالی نسبی / تخلخل", "دانسیته‌سنج"),
+                ("4.1.4 ریزساختار و کیفیت ذوب", "متالوگرافی")
+            ]
+            
+            qc_data = {}
+            for t_title, t_type in tests:
+                q1, q2, q3 = st.columns([3, 2, 4])
+                with q1: st.write(f"**{t_title}**")
+                with q2: res = st.selectbox("نتیجه", ["تایید", "رد"], key=t_title)
+                with q3: note = st.text_input("ملاحظات", key=f"qc_n_{t_title}")
+                qc_data[t_title] = {"result": res, "type": t_type, "note": note}
                 
-                qc_data = {}
-                for t_title, t_type in tests:
-                    q1, q2, q3 = st.columns([3, 2, 4])
-                    with q1: st.write(f"**{t_title}**")
-                    with q2: res = st.selectbox("نتیجه", ["تایید", "رد"], key=t_title)
-                    with q3: note = st.text_input("ملاحظات", key=f"qc_n_{t_title}")
-                    qc_data[t_title] = {"result": res, "type": t_type, "note": note}
-                    
-                st.markdown("---")
-                st.subheader("👥 مسئولین و تاییدکنندگان")
-                sc1, sc2, sc3 = st.columns(3)
-                with sc1: inspector = st.text_input("بازرس کنترل کیفیت")
-                with sc2: engineer = st.text_input("مسئول فنی / مهندسی کیفیت")
-                with sc3: manager = st.text_input("مدیر تضمین کیفیت")
-                
-                qc_submit = st.form_submit_button("💾 ثبت نهایی فرم QC")
+            st.markdown("---")
+            st.subheader("👥 مسئولین و تاییدکنندگان")
+            sc1, sc2, sc3 = st.columns(3)
+            with sc1: inspector = st.text_input("بازرس کنترل کیفیت")
+            with sc2: engineer = st.text_input("مسئول فنی / مهندسی کیفیت")
+            with sc3: manager = st.text_input("مدیر تضمین کیفیت")
+            
+            qc_btn1, qc_btn2 = st.columns([3, 2])
+            with qc_btn1:
+                qc_submit = st.button("💾 ثبت نهایی فرم QC")
                 if qc_submit:
                     c = conn.cursor()
                     c.execute("""INSERT OR REPLACE INTO qc 
@@ -900,6 +911,19 @@ else:
                                datetime.now().strftime("%Y-%m-%d"), json.dumps(qc_data, ensure_ascii=False), inspector, engineer, manager))
                     conn.commit()
                     st.success("نتایج ارزیابی QC با موفقیت ذخیره شد.")
+                    st.rerun()
+            with qc_btn2:
+                # دکمه خروجی اکسل گزارشات QC کنار دکمه ثبت
+                qc_all_df = pd.read_sql_query("SELECT * FROM qc", conn)
+                clean_qc_df = qc_all_df.drop(columns=['qc_checks_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP) if not qc_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                excel_file_qc = export_to_styled_excel(clean_qc_df, "گزارشات QC")
+                st.download_button(
+                    label="📥 دانلود خروجی اکسل کامل گزارشات QC",
+                    data=excel_file_qc,
+                    file_name="qc_reports.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_qc_top"
+                )
                     
         st.markdown("---")
         st.subheader("📂 جدول تمامی گزارش‌های ارزیابی کیفیت (QC) قبلی")
@@ -907,16 +931,6 @@ else:
         if not qc_all_df.empty:
             clean_qc_df = qc_all_df.drop(columns=['qc_checks_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_qc_df)
-            
-            # دانلود اکسل فرم‌های QC در انتهای صفحه
-            excel_file = export_to_styled_excel(clean_qc_df, "گزارشات QC")
-            st.download_button(
-                label="📥 دانلود خروجی اکسل کامل گزارشات QC",
-                data=excel_file,
-                file_name="qc_reports.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="btn_down_qc_all"
-            )
         else:
             st.info("هنوز هیچ فرم ارزیابی کیفیتی ثبت نشده است.")
 
@@ -1022,25 +1036,41 @@ else:
         mc2.metric("بهای تمام شده کل", f"{total_production_cost:,.0f} ریال")
         mc3.metric("قیمت نهایی قابل ارائه به مشتری", f"{final_price:,.0f} ریال")
         
-        if st.button("💾 ذخیره برآورد قیمت"):
-            if p_code:
-                c = conn.cursor()
-                c.execute("""INSERT OR REPLACE INTO cost_calculator 
-                    (part_code, part_name, powder_type, volume_cm3, net_weight_g, support_volume_cm3, support_weight_g,
-                     machine_type, parts_on_plate, print_time_hrs, design_time_hrs, post_process_time_hrs, overhead_pct,
-                     powder_cost_total, argon_cost_total, depreciation_cost_total, power_cost_total, engineering_cost_total,
-                     operator_cost_total, post_process_cost_total, qc_cost_total, utility_ventilation, utility_chiller,
-                     total_production_cost, overhead_cost, final_price)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    (p_code, p_name, powder_type, vol_cm3, net_weight_g, sup_vol_cm3, support_weight_g,
-                     machine_type, parts_on_plate, print_time_hrs, design_time_hrs, post_time_hrs, overhead_pct,
-                     cost_powder, cost_argon, cost_depreciation, cost_power, cost_engineering,
-                     cost_operator, cost_post_process, cost_qc, cost_ventilation, cost_chiller,
-                     total_production_cost, overhead_cost, final_price))
-                conn.commit()
-                st.success("محاسبه هزینه با موفقیت ثبت شد.")
-            else:
-                st.error("لطفاً شناسه قطعه را مشخص کنید.")
+        cost_btn1, cost_btn2 = st.columns([3, 2])
+        with cost_btn1:
+            save_cost_calc = st.button("💾 ذخیره برآورد قیمت")
+            if save_cost_calc:
+                if p_code:
+                    c = conn.cursor()
+                    c.execute("""INSERT OR REPLACE INTO cost_calculator 
+                        (part_code, part_name, powder_type, volume_cm3, net_weight_g, support_volume_cm3, support_weight_g,
+                         machine_type, parts_on_plate, print_time_hrs, design_time_hrs, post_process_time_hrs, overhead_pct,
+                         powder_cost_total, argon_cost_total, depreciation_cost_total, power_cost_total, engineering_cost_total,
+                         operator_cost_total, post_process_cost_total, qc_cost_total, utility_ventilation, utility_chiller,
+                         total_production_cost, overhead_cost, final_price)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (p_code, p_name, powder_type, vol_cm3, net_weight_g, sup_vol_cm3, support_weight_g,
+                         machine_type, parts_on_plate, print_time_hrs, design_time_hrs, post_time_hrs, overhead_pct,
+                         cost_powder, cost_argon, cost_depreciation, cost_power, cost_engineering,
+                         cost_operator, cost_post_process, cost_qc, cost_ventilation, cost_chiller,
+                         total_production_cost, overhead_cost, final_price))
+                    conn.commit()
+                    st.success("محاسبه هزینه با موفقیت ثبت شد.")
+                    st.rerun()
+                else:
+                    st.error("لطفاً شناسه قطعه را مشخص کنید.")
+        with cost_btn2:
+            # دکمه خروجی اکسل محاسبات هزینه کنار دکمه ثبت
+            cost_all_df = pd.read_sql_query("SELECT * FROM cost_calculator", conn)
+            clean_cost_df = cost_all_df.rename(columns=FARSI_HEADERS_MAP) if not cost_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+            excel_file_cost = export_to_styled_excel(clean_cost_df, "برآورد هزینه‌ها")
+            st.download_button(
+                label="📥 دانلود خروجی اکسل کامل برآورد هزینه‌ها",
+                data=excel_file_cost,
+                file_name="cost_calculations.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_cost_top"
+            )
                 
         st.markdown("---")
         st.subheader("📂 جدول تمامی محاسبات هزینه قبلی ثبت‌شده")
@@ -1048,16 +1078,6 @@ else:
         if not cost_all_df.empty:
             clean_cost_df = cost_all_df.rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_cost_df)
-            
-            # دانلود اکسل محاسبات هزینه در انتهای صفحه
-            excel_file = export_to_styled_excel(clean_cost_df, "برآورد هزینه‌ها")
-            st.download_button(
-                label="📥 دانلود خروجی اکسل کامل برآورد هزینه‌ها",
-                data=excel_file,
-                file_name="cost_calculations.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="btn_down_cost_all"
-            )
         else:
             st.info("هنوز هیچ برآورد هزینه‌ای ثبت نشده است.")
 
@@ -1072,48 +1092,49 @@ else:
         
         current_rates = load_system_rates()
         
-        with st.form("settings_form"):
-            st.subheader("۱. قیمت پودرهای فلزی (ریال به ازای هر کیلوگرم)")
-            c1, c2 = st.columns(2)
-            with c1:
-                r_steel = st.number_input("پودر Steel 316", min_value=0.0, value=float(current_rates.get("powder_price_Steel_316", 120000000)))
-                r_ti = st.number_input("پودر Ti6Al4V", min_value=0.0, value=float(current_rates.get("powder_price_Ti6Al4V", 500000000)))
-            with c2:
-                r_inconel = st.number_input("پودر Inconel 718", min_value=0.0, value=float(current_rates.get("powder_price_Inconel_718", 300000000)))
-                r_hastelloy = st.number_input("پودر Hastelloy X", min_value=0.0, value=float(current_rates.get("powder_price_Hastelloy_X", 400000000)))
+        st.subheader("۱. قیمت پودرهای فلزی (ریال به ازای هر کیلوگرم)")
+        c1, c2 = st.columns(2)
+        with c1:
+            r_steel = st.number_input("پودر Steel 316", min_value=0.0, value=float(current_rates.get("powder_price_Steel_316", 120000000)))
+            r_ti = st.number_input("پودر Ti6Al4V", min_value=0.0, value=float(current_rates.get("powder_price_Ti6Al4V", 500000000)))
+        with c2:
+            r_inconel = st.number_input("پودر Inconel 718", min_value=0.0, value=float(current_rates.get("powder_price_Inconel_718", 300000000)))
+            r_hastelloy = st.number_input("پودر Hastelloy X", min_value=0.0, value=float(current_rates.get("powder_price_Hastelloy_X", 400000000)))
 
-            st.markdown("---")
-            st.subheader("۲. نرخ ساعتی استهلاک دستگاه‌ها (ریال / ساعت)")
-            m1, m2 = st.columns(2)
-            with m1:
-                r_depr_m120 = st.number_input("نرخ استهلاک دستگاه M120", min_value=0.0, value=float(current_rates.get("machine_depr_M120", 1250000)))
-            with m2:
-                r_depr_m300 = st.number_input("نرخ استهلاک دستگاه M300", min_value=0.0, value=float(current_rates.get("machine_depr_M300", 3125000)))
+        st.markdown("---")
+        st.subheader("۲. نرخ ساعتی استهلاک دستگاه‌ها (ریال / ساعت)")
+        m1, m2 = st.columns(2)
+        with m1:
+            r_depr_m120 = st.number_input("نرخ استهلاک دستگاه M120", min_value=0.0, value=float(current_rates.get("machine_depr_M120", 1250000)))
+        with m2:
+            r_depr_m300 = st.number_input("نرخ استهلاک دستگاه M300", min_value=0.0, value=float(current_rates.get("machine_depr_M300", 3125000)))
 
-            st.markdown("---")
-            st.subheader("۳. دستمزدهای نیروی انسانی (ریال / نفرساعت)")
-            w1, w2, w3 = st.columns(3)
-            with w1:
-                r_wage_designer = st.number_input("دستمزد طراح مهندسی", min_value=0.0, value=float(current_rates.get("wage_designer", 2500000)))
-            with w2:
-                r_wage_operator = st.number_input("دستمزد اپراتور دستگاه", min_value=0.0, value=float(current_rates.get("wage_operator", 1870000)))
-            with w3:
-                r_wage_qc = st.number_input("دستمزد مسئول کنترل کیفیت", min_value=0.0, value=float(current_rates.get("wage_qc", 2180000)))
+        st.markdown("---")
+        st.subheader("۳. دستمزدهای نیروی انسانی (ریال / نفرساعت)")
+        w1, w2, w3 = st.columns(3)
+        with w1:
+            r_wage_designer = st.number_input("دستمزد طراح مهندسی", min_value=0.0, value=float(current_rates.get("wage_designer", 2500000)))
+        with w2:
+            r_wage_operator = st.number_input("دستمزد اپراتور دستگاه", min_value=0.0, value=float(current_rates.get("wage_operator", 1870000)))
+        with w3:
+            r_wage_qc = st.number_input("دستمزد مسئول کنترل کیفیت", min_value=0.0, value=float(current_rates.get("wage_qc", 2180000)))
 
-            st.markdown("---")
-            st.subheader("۴. هزینه‌های جانبی، انرژی و مصارف کارگاهی")
-            u1, u2, u3 = st.columns(3)
-            with u1:
-                r_argon = st.number_input("نرخ گاز آرگون (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("argon_rate", 300000)))
-                r_electricity = st.number_input("نرخ برق مصرفی (ریال/کیلووات‌ساعت)", min_value=0.0, value=float(current_rates.get("electricity_rate", 50000)))
-            with u2:
-                r_post_process = st.number_input("عملیات پرداخت سطحی (ریال/ماشین‌ساعت)", min_value=0.0, value=float(current_rates.get("post_process_rate", 500000)))
-                r_qc_fixed = st.number_input("تست‌های QC ثابت (ریال/قطعه)", min_value=0.0, value=float(current_rates.get("qc_fixed_cost", 40000000)))
-            with u3:
-                r_ventilation = st.number_input("سیستم تهویه (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("ventilation_rate", 200000)))
-                r_chiller = st.number_input("آب خنک‌کاری چیلر (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("chiller_rate", 2500)))
+        st.markdown("---")
+        st.subheader("۴. هزینه‌های جانبی، انرژی و مصارف کارگاهی")
+        u1, u2, u3 = st.columns(3)
+        with u1:
+            r_argon = st.number_input("نرخ گاز آرگون (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("argon_rate", 300000)))
+            r_electricity = st.number_input("نرخ برق مصرفی (ریال/کیلووات‌ساعت)", min_value=0.0, value=float(current_rates.get("electricity_rate", 50000)))
+        with u2:
+            r_post_process = st.number_input("عملیات پرداخت سطحی (ریال/ماشین‌ساعت)", min_value=0.0, value=float(current_rates.get("post_process_rate", 500000)))
+            r_qc_fixed = st.number_input("تست‌های QC ثابت (ریال/قطعه)", min_value=0.0, value=float(current_rates.get("qc_fixed_cost", 40000000)))
+        with u3:
+            r_ventilation = st.number_input("سیستم تهویه (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("ventilation_rate", 200000)))
+            r_chiller = st.number_input("آب خنک‌کاری چیلر (ریال/ساعت)", min_value=0.0, value=float(current_rates.get("chiller_rate", 2500)))
 
-            save_rates_submit = st.form_submit_button("💾 ذخیره تغییرات نرخ‌ها در پایگاه داده")
+        rate_btn1, rate_btn2 = st.columns([3, 2])
+        with rate_btn1:
+            save_rates_submit = st.button("💾 ذخیره تغییرات نرخ‌ها در پایگاه داده")
             if save_rates_submit:
                 conn = get_db_connection()
                 c = conn.cursor()
@@ -1140,6 +1161,20 @@ else:
                 conn.close()
                 st.success("تمام نرخ‌های جدید با موفقیت ذخیره شدند و در بخش «محاسبه‌گر هزینه» اعمال گردیدند.")
                 st.rerun()
+        with rate_btn2:
+            # دکمه خروجی اکسل نرخ‌های پایه
+            conn = get_db_connection()
+            rates_df = pd.read_sql_query("SELECT * FROM system_settings", conn)
+            conn.close()
+            rates_df.columns = ["عنوان پارامتر (کلید)", "مقدار / نرخ پایه (ریال)"]
+            excel_file_rates = export_to_styled_excel(rates_df, "نرخ‌های پایه")
+            st.download_button(
+                label="📥 دانلود خروجی اکسل کامل نرخ‌های پایه",
+                data=excel_file_rates,
+                file_name="system_rates.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_rates_top"
+            )
 
     # ---------------------------------------------------------
     # ۶. بایگانی و گزارش‌گیری اکسل
