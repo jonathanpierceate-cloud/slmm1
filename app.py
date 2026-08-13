@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل اصلاح‌شده: حذف کامل و قطعی تمام راهنماها و متون اضافی داخل کادرها ---
+# --- استایل ویژه و قدرتمند جهت راست‌چین‌سازی ۱۰۰٪ تمام اجزا و ورودی‌ها ---
 st.markdown("""
 <style>
     @font-face {
@@ -27,18 +27,32 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. اعمال فونت و راست‌چین‌سازی فقط روی عناصر متنی استاندارد */
-    html, body, .stApp, p, span, label, h1, h2, h3, h4, h5, h6, table, button {
+    /* ۱. راست‌چین‌سازی اجباری لایه اصلی اپلیکیشن */
+    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
     }
 
-    input, select, textarea {
+    /* ۲. راست‌چین کردن تمامی متون، لیبل‌ها، عنوان‌ها و پاراگراف‌ها */
+    p, span, label, h1, h2, h3, h4, h5, h6, [data-testid="stMarkdownContainer"] {
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
+    /* ۳. راست‌چین کردن اختصاصی تمامی کادرهای ورودی (Text, Number, Select) */
+    input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
         font-size: 1.2rem !important;
+    }
+
+    /* راست‌چین کردن اعداد داخل ورودی‌های عددی (Number Input) */
+    div[data-testid="stNumberInput"] input {
+        direction: rtl !important;
+        text-align: right !important;
     }
 
     p, span, label, button {
@@ -49,7 +63,7 @@ st.markdown("""
     h2 { font-size: 1.8rem !important; font-weight: bold; }
     h3 { font-size: 1.5rem !important; font-weight: bold; }
 
-    /* ۲. حذف کامل متن راهنمای Press Enter و آیکون متنی visibility */
+    /* ۴. حذف کامل راهنماهای اضافی و رفع باگ کلمه visibility */
     [data-testid="stInputInstruction"],
     .st-emotion-cache-1pxeoh2,
     .stInputInstruction,
@@ -57,17 +71,26 @@ st.markdown("""
         display: none !important;
         visibility: hidden !important;
         height: 0 !important;
-        width: 0 !important;
         opacity: 0 !important;
     }
 
-    /* پاک‌سازی Placeholderها */
+    /* جلوگیری از ظاهر شدن متن visibility در دکمه نشان دادن رمز عبور */
+    button[aria-label="Show password"], button[aria-label="Hide password"] {
+        font-family: monospace !important;
+    }
+
     input::placeholder, textarea::placeholder {
         color: transparent !important;
         opacity: 0 !important;
     }
 
-    /* ۳. راست‌چین کردن کامل جداول */
+    /* ۵. اصلاح آیکون‌های Material Streamlit */
+    [data-testid="stIconMaterial"], .aria-hidden, i, [class^="st-"] {
+        font-family: 'Material Symbols Outlined', 'Material Icons' !important;
+        direction: ltr !important;
+    }
+
+    /* ۶. راست‌چین کردن کامل و اجباری تمامی جداول */
     table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
@@ -82,7 +105,12 @@ st.markdown("""
         padding: 10px !important;
     }
 
-    /* ۴. استایل‌دهی دکمه‌های منوی سایدبار */
+    /* ۷. راست‌چین‌سازی کامل سایدبار */
+    [data-testid="stSidebar"] {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
     [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
         display: none !important;
     }
@@ -105,6 +133,8 @@ st.markdown("""
         cursor: pointer !important;
         transition: all 0.2s ease !important;
         border: 1px solid transparent !important;
+        direction: rtl !important;
+        text-align: right !important;
     }
 
     div[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
@@ -122,7 +152,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ۵. کارت‌های شاخص آمار */
+    /* ۸. کارت‌های شاخص آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -412,7 +442,7 @@ def logout_user():
     st.rerun()
 
 # ---------------------------------------------------------
-# صفحه ورود (کادرهای ۱۰۰٪ راست‌چین و پاک‌سازی‌شده)
+# صفحه ورود (کاملاً راست‌چین)
 # ---------------------------------------------------------
 if not st.session_state["authenticated"]:
     col_login_1, col_login_2, col_login_3 = st.columns([1, 2, 1])
@@ -425,8 +455,8 @@ if not st.session_state["authenticated"]:
         st.caption("لطفاً نام کاربری و رمز عبور خود را وارد کنید:")
         
         with st.form("login_form"):
-            username_input = st.text_input("نام کاربری (Username)")
-            password_input = st.text_input("رمز عبور (Password)", type="password")
+            username_input = st.text_input("نام کاربری (Username)", placeholder="")
+            password_input = st.text_input("رمز عبور (Password)", type="password", placeholder="")
             submit_login = st.form_submit_button("🔑 ورود به سامانه")
             
             if submit_login:
