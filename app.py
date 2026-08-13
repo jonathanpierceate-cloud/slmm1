@@ -14,7 +14,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل بومی راست‌چین (RTL) بدون تخریب آیکون‌ها ---
+# --- استایل تمیز و بدون باگ انیمیشن/مرز سایدبار ---
 st.markdown("""
 <style>
     @font-face {
@@ -27,14 +27,13 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* راست‌چین‌سازی کل صفحه و سایدبار */
-    html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
+    /* ۱. فونت عمومی و راست‌چین‌سازی محتوای اصلی */
+    .main .block-container {
         direction: rtl !important;
         text-align: right !important;
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
     }
 
-    /* اعمال فونت به متون و عناوین */
     h1, h2, h3, h4, h5, h6, p, label, button, table {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
@@ -49,15 +48,15 @@ st.markdown("""
     h2 { font-size: 1.8rem !important; font-weight: bold; }
     h3 { font-size: 1.5rem !important; font-weight: bold; }
 
-    /* راست‌چین کردن ورودی‌ها */
-    input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
+    /* ۲. راست‌چین‌سازی بومی ورودی‌ها بدون بهم زدن فریم‌ورک */
+    input, select, textarea {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
         font-size: 1.2rem !important;
     }
 
-    /* راست‌چین کردن جداول */
+    /* ۳. راست‌چین کردن کامل جداول */
     table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
@@ -66,13 +65,23 @@ st.markdown("""
         text-align: right !important;
     }
     
-    th, td, table th, table td {
+    th, td {
         text-align: right !important;
         direction: rtl !important;
         padding: 10px !important;
     }
 
-    /* استایل‌دهی دکمن‌های منوی سایدبار */
+    /* ۴. تنظیمات استاندارد سایدبار (جلوگیری از ایجاد خط عمودی وسط صفحه) */
+    [data-testid="stSidebar"] {
+        border-left: none !important;
+        border-right: 1px solid #334155 !important;
+    }
+
+    [data-testid="stSidebarUserContent"] {
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
     div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         display: flex;
         flex-direction: column;
@@ -105,7 +114,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* کارت‌های شاخص آمار */
+    /* ۵. کارت‌های آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -395,7 +404,7 @@ def logout_user():
     st.rerun()
 
 # ---------------------------------------------------------
-# صفحه ورود (کاملاً راست‌چین و بدون باگ آیکون)
+# صفحه ورود
 # ---------------------------------------------------------
 if not st.session_state["authenticated"]:
     col_login_1, col_login_2, col_login_3 = st.columns([1, 2, 1])
