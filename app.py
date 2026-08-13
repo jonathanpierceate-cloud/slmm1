@@ -28,7 +28,7 @@ def export_to_styled_excel(df, sheet_name="گزارش"):
         # راست‌چین کردن کامل برگه اکسل (RTL)
         worksheet.sheet_view.rightToLeft = True
 
-        # تعریف استایل‌های شکیل
+        # تعریف استایل‌ها
         header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
         header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
         data_font = Font(name='B Nazanin', size=11)
@@ -41,7 +41,7 @@ def export_to_styled_excel(df, sheet_name="گزارش"):
             bottom=Side(style='thin', color='CBD5E1')
         )
 
-        # اعمال استایل هدرها
+        # استایل هدرها
         for col_num, col_name in enumerate(df.columns, 1):
             cell = worksheet.cell(row=1, column=col_num)
             cell.font = header_font
@@ -49,7 +49,7 @@ def export_to_styled_excel(df, sheet_name="گزارش"):
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             cell.border = thin_border
 
-        # اعمال استایل داده‌ها
+        # استایل داده‌ها
         for row_num in range(2, len(df) + 2):
             for col_num in range(1, len(df.columns) + 1):
                 cell = worksheet.cell(row=row_num, column=col_num)
@@ -57,7 +57,7 @@ def export_to_styled_excel(df, sheet_name="گزارش"):
                 cell.alignment = align_right
                 cell.border = thin_border
 
-        # تنظیم خودکار عرض ستون‌ها
+        # تنظیم عرض ستون‌ها
         for col in worksheet.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
             col_letter = openpyxl.utils.get_column_letter(col[0].column)
@@ -66,7 +66,7 @@ def export_to_styled_excel(df, sheet_name="گزارش"):
     output.seek(0)
     return output
 
-# --- استایل تمیز، بومی و بدون تداخل برای راست‌چین‌سازی کامل ---
+# --- استایل تمیز و راست‌چین CSS ---
 st.markdown("""
 <style>
     @font-face {
@@ -613,13 +613,14 @@ else:
                 disp_powders = powders_df[['powder_code', 'material', 'weight_g', 'date']].rename(columns=FARSI_HEADERS_MAP)
                 st.table(disp_powders)
                 
-                # دانلود اکسل بخش پودر اولیه
+                # دانلود اکسل پودرهای اولیه در انتهای جدول
                 excel_file = export_to_styled_excel(disp_powders, "پودرهای اولیه")
                 st.download_button(
-                    label="📥 دانلود فایل اکسل پودرهای اولیه",
+                    label="📥 دانلود خروجی اکسل کامل پودرهای اولیه",
                     data=excel_file,
                     file_name="powders_initial.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_pwd_init"
                 )
             else:
                 st.info("هیچ پودر اولیه ای در سیستم ثبت نشده است.")
@@ -667,13 +668,14 @@ else:
                 display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(display_recycled_df)
                 
-                # دانلود اکسل بخش پودرهای بازیافتی
+                # دانلود اکسل پودرهای بازیافتی در انتهای جدول
                 excel_file = export_to_styled_excel(display_recycled_df, "پودرهای بازیافتی")
                 st.download_button(
-                    label="📥 دانلود فایل اکسل پودرهای بازیافتی",
+                    label="📥 دانلود خروجی اکسل کامل پودرهای بازیافتی",
                     data=excel_file,
                     file_name="powders_recycled.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_pwd_rec"
                 )
             else:
                 st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
@@ -710,13 +712,14 @@ else:
                 disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(disp_nora)
                 
-                # دانلود اکسل پودرهای نورا
+                # دانلود اکسل پودرهای نورا در انتهای جدول
                 excel_file = export_to_styled_excel(disp_nora, "پودرهای نورا")
                 st.download_button(
-                    label="📥 دانلود فایل اکسل پودرهای نورا",
+                    label="📥 دانلود خروجی اکسل کامل پودرهای نورا",
                     data=excel_file,
                     file_name="powders_nora.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_pwd_nora"
                 )
             else:
                 st.info("هنوز پودری از نورا ثبت نشده است.")
@@ -819,22 +822,23 @@ else:
                         st.error("لطفاً کد قطعه را مشخص کنید.")
                         
         st.markdown("---")
-        st.subheader("📂 جدول کلی فرم‌های تولید ثبت‌شده")
+        st.subheader("📂 جدول تمامی رکوردهای تولید قبلی")
         prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
         if not prod_all_df.empty:
             clean_prod_df = prod_all_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_prod_df)
             
-            # دانلود اکسل فرم‌های تولید
+            # دانلود اکسل فرم‌های تولید در انتهای صفحه
             excel_file = export_to_styled_excel(clean_prod_df, "رکوردهای تولید")
             st.download_button(
-                label="📥 دانلود فایل اکسل رکوردهای تولید",
+                label="📥 دانلود خروجی اکسل کامل رکوردهای تولید",
                 data=excel_file,
                 file_name="production_records.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_prod_all"
             )
         else:
-            st.info("هنوز هیج فرم تولیدی ثبت نشده است.")
+            st.info("هنوز هیچ فرم تولیدی ثبت نشده است.")
 
         conn.close()
 
@@ -898,19 +902,20 @@ else:
                     st.success("نتایج ارزیابی QC با موفقیت ذخیره شد.")
                     
         st.markdown("---")
-        st.subheader("📂 جدول کلی گزارش‌های ارزیابی کیفیت (QC)")
+        st.subheader("📂 جدول تمامی گزارش‌های ارزیابی کیفیت (QC) قبلی")
         qc_all_df = pd.read_sql_query("SELECT * FROM qc", conn)
         if not qc_all_df.empty:
             clean_qc_df = qc_all_df.drop(columns=['qc_checks_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_qc_df)
             
-            # دانلود اکسل فرم‌های QC
+            # دانلود اکسل فرم‌های QC در انتهای صفحه
             excel_file = export_to_styled_excel(clean_qc_df, "گزارشات QC")
             st.download_button(
-                label="📥 دانلود فایل اکسل گزارشات QC",
+                label="📥 دانلود خروجی اکسل کامل گزارشات QC",
                 data=excel_file,
                 file_name="qc_reports.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_qc_all"
             )
         else:
             st.info("هنوز هیچ فرم ارزیابی کیفیتی ثبت نشده است.")
@@ -1038,19 +1043,20 @@ else:
                 st.error("لطفاً شناسه قطعه را مشخص کنید.")
                 
         st.markdown("---")
-        st.subheader("📂 جدول کلی محاسبات هزینه ثبت‌شده")
+        st.subheader("📂 جدول تمامی محاسبات هزینه قبلی ثبت‌شده")
         cost_all_df = pd.read_sql_query("SELECT * FROM cost_calculator", conn)
         if not cost_all_df.empty:
             clean_cost_df = cost_all_df.rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_cost_df)
             
-            # دانلود اکسل محاسبات هزینه
+            # دانلود اکسل محاسبات هزینه در انتهای صفحه
             excel_file = export_to_styled_excel(clean_cost_df, "برآورد هزینه‌ها")
             st.download_button(
-                label="📥 دانلود فایل اکسل برآورد هزینه‌ها",
+                label="📥 دانلود خروجی اکسل کامل برآورد هزینه‌ها",
                 data=excel_file,
                 file_name="cost_calculations.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_down_cost_all"
             )
         else:
             st.info("هنوز هیچ برآورد هزینه‌ای ثبت نشده است.")
@@ -1248,7 +1254,8 @@ else:
                     label="📥 دانلود فایل اکسل جدول انتخاب شده",
                     data=excel_file,
                     file_name=f"{selected_tbl}_export.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="btn_down_archive_tbl"
                 )
                     
             with col_del:
