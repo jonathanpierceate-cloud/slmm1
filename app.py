@@ -1245,7 +1245,7 @@ else:
             with col_down:
                 excel_file = export_to_styled_excel(farsi_df, target_table.split(' ')[0])
                 st.download_button(
-                    label="📥 دانلود فایل اکسل جدول",
+                    label="📥 دانلود فایل اکسل جدول انتخاب شده",
                     data=excel_file,
                     file_name=f"{selected_tbl}_export.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
