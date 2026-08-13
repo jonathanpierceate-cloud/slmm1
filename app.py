@@ -14,11 +14,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- تزریق استایل هوشمند جهت اصلاح آیکون‌ها، راست‌چین‌سازی و حذف متون اضافی ---
+# --- استایل بومی راست‌چین (RTL) بدون تخریب آیکون‌ها ---
 st.markdown("""
-<!-- فراخوانی استاندارد فونت آیکون‌های متریال گوگل جهت تبدیل متون به آیکون -->
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
-
 <style>
     @font-face {
         font-family: 'B Nazanin';
@@ -30,8 +27,15 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. راست‌چین‌سازی دقیق متون عمومی */
-    html, body, .stApp, h1, h2, h3, h4, h5, h6, p, label, button, table {
+    /* راست‌چین‌سازی کل صفحه و سایدبار */
+    html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"] {
+        direction: rtl !important;
+        text-align: right !important;
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
+    }
+
+    /* اعمال فونت به متون و عناوین */
+    h1, h2, h3, h4, h5, h6, p, label, button, table {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
@@ -45,37 +49,15 @@ st.markdown("""
     h2 { font-size: 1.8rem !important; font-weight: bold; }
     h3 { font-size: 1.5rem !important; font-weight: bold; }
 
-    /* ۲. بازگرداندن فونت اصلی به آیکون‌های متریال جهت عدم نمایش متون لاتین آیکون‌ها */
-    [data-testid="stIconMaterial"], 
-    .material-symbols-outlined,
-    [class*="Material"],
-    [data-testid="stSidebarCollapseButton"] span,
-    button[aria-label="Show password"] span,
-    button[aria-label="Hide password"] span {
-        font-family: 'Material Symbols Outlined' !important;
-        direction: ltr !important;
-        text-align: center !important;
-    }
-
-    /* ۳. مخفی‌سازی راهنمای Press Enter و توضیحات زیر کادرها */
-    [data-testid="stInputInstruction"],
-    div[data-testid="stInputInstruction"] {
-        display: none !important;
-        visibility: hidden !important;
-        height: 0px !important;
-        margin: 0px !important;
-        padding: 0px !important;
-    }
-
-    /* ۴. راست‌چین کردن ورودی‌ها */
-    input, select, textarea {
+    /* راست‌چین کردن ورودی‌ها */
+    input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
         text-align: right !important;
         font-size: 1.2rem !important;
     }
 
-    /* ۵. راست‌چین کردن کامل جداول */
+    /* راست‌چین کردن جداول */
     table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
@@ -90,16 +72,7 @@ st.markdown("""
         padding: 10px !important;
     }
 
-    /* ۶. استایل سایدبار و منو */
-    [data-testid="stSidebar"][aria-expanded="false"] [data-testid="stSidebarUserContent"] {
-        display: none !important;
-    }
-
-    [data-testid="stSidebar"][aria-expanded="true"] [data-testid="stSidebarUserContent"] {
-        direction: rtl !important;
-        text-align: right !important;
-    }
-
+    /* استایل‌دهی دکمن‌های منوی سایدبار */
     div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         display: flex;
         flex-direction: column;
@@ -132,7 +105,7 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ۷. کارت‌های آمار */
+    /* کارت‌های شاخص آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -422,7 +395,7 @@ def logout_user():
     st.rerun()
 
 # ---------------------------------------------------------
-# صفحه ورود
+# صفحه ورود (کاملاً راست‌چین و بدون باگ آیکون)
 # ---------------------------------------------------------
 if not st.session_state["authenticated"]:
     col_login_1, col_login_2, col_login_3 = st.columns([1, 2, 1])
