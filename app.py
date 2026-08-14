@@ -19,7 +19,6 @@ st.set_page_config(
 
 # --- توابع کمکی جهت تخت‌سازی و استخراج چک‌لیست‌ها و نوت‌ها در جدول و اکسل ---
 def flatten_powder_df(df):
-    """استخراج تمام آزمون‌ها و ملاحظات از JSON چک‌لیست پودر و تبدیل به ستون‌های مجزا"""
     if df.empty:
         return df
     records = []
@@ -46,7 +45,6 @@ def flatten_powder_df(df):
     return pd.DataFrame(records)
 
 def flatten_qc_df(df):
-    """استخراج تمام تست‌های کیفی و ملاحظات از JSON کنترل کیفیت و تبدیل به ستون‌های مجزا"""
     if df.empty:
         return df
     records = []
@@ -88,10 +86,8 @@ def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
             df.to_excel(writer, index=False, sheet_name=clean_sheet_name)
             worksheet = writer.sheets[clean_sheet_name]
 
-            # راست‌چین کردن کامل برگه اکسل (RTL)
             worksheet.sheet_view.rightToLeft = True
 
-            # استایل‌ها
             header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
             header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
             data_font = Font(name='B Nazanin', size=11)
@@ -104,7 +100,6 @@ def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
                 bottom=Side(style='thin', color='CBD5E1')
             )
 
-            # هدرها
             for col_num, col_name in enumerate(df.columns, 1):
                 cell = worksheet.cell(row=1, column=col_num)
                 cell.font = header_font
@@ -112,7 +107,6 @@ def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
                 cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
                 cell.border = thin_border
 
-            # داده‌ها
             for row_num in range(2, len(df) + 2):
                 for col_num in range(1, len(df.columns) + 1):
                     cell = worksheet.cell(row=row_num, column=col_num)
@@ -120,7 +114,6 @@ def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
                     cell.alignment = align_right
                     cell.border = thin_border
 
-            # تنظیم عرض ستون‌ها
             for col in worksheet.columns:
                 max_len = max(len(str(cell.value or '')) for cell in col)
                 col_letter = openpyxl.utils.get_column_letter(col[0].column)
@@ -612,18 +605,18 @@ else:
         st.markdown("---")
         st.subheader("راهنمای گردش کار")
         st.markdown("""
-        1. **📦 پودر** — ثبت و آنالیز ظروف پودر خریداری شده اولیه، بازیافتی یا پودرهای نورا (به همراه ذخیره کامل نتایج چک‌لیست و ملاحظات).
-        2. **🏭 فرم تولید** — تعریف «کد قطعه» و اتصال آن به «کد ظرف پودر» و ثبت زمان‌های آماده‌سازی و فرآیند.
-        3. **❇️ کنترل کیفیت (QC)** — ثبت نتایج تست‌های چشمی، ابعادی و متالوگرافی برای کد قطعه (شامل نتایج و نوت‌ها).
-        4. **💰 محاسبه‌گر هزینه** — برآورد خودکار هزینه‌های تولید و قیمت فروش نهایی بر اساس نرخ‌های روز.
-        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه جامع قطعات، مشاهده جداول دیتابیس و خروجی اکسل چندبرگه.
+        1. **📦 پودر** — ثبت و ویرایش ظروف پودر خریداری شده اولیه، بازیافتی یا پودرهای نورا به همراه آزمون‌های چک‌لیست و ملاحظات تفکیکی.
+        2. **🏭 فرم تولید** — ثبت و ویرایش مشخصات قطعات، زمان‌های ساخت، اوزان متریال و درصد فیلتر دستگاه.
+        3. **❇️ کنترل کیفیت (QC)** — ثبت و ویرایش نتایج تست‌های چشمی، ابعادی و مکانیکی به همراه ثبت نوت برای هر آزمون.
+        4. **💰 محاسبه‌گر هزینه** — برآورد و ویرایش بهای تمام شده قطعات بر اساس آخرین نرخ‌های پایگاه داده.
+        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه کامل هر قطعه و دریافت خروجی اکسل چندبرگه شامل کلیه مشخصات و نوت‌ها.
         
         <br>
         <p style='color: #94a3b8; font-size: 1.1rem;'>از منوی سمت راست بین صفحات جابه‌جا شوید.</p>
         """, unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # ۱. پودر
+    # ۱. پودر (امکان انتخاب و ادیت کامل رکوردهای قبلی)
     # ---------------------------------------------------------
     elif choice == "📦 پودر":
         st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -636,14 +629,40 @@ else:
         sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده", "🏭 ۳- پودرهای خریداری شده از نورا"])
         
         with sub_tab1:
-            with st.expander("➕ ثبت / ویرایش پودر جدید", expanded=True):
+            st.subheader("حالت ثبت / ویرایش پودر اولیه")
+            mode_pwd_init = st.radio("", ["ثبت پودر جدید", "ویرایش پودر موجود"], horizontal=True, key="mode_pwd_init")
+            
+            edit_pwd_init_data = {}
+            chk_init_saved = {}
+            if mode_pwd_init == "ویرایش پودر موجود":
+                existing_pwds = powders_df['powder_code'].tolist()
+                if existing_pwds:
+                    sel_pwd_code = st.selectbox("انتخاب کد پودر جهت ویرایش:", existing_pwds, key="sel_pwd_init_edit")
+                    edit_pwd_init_data = powders_df[powders_df['powder_code'] == sel_pwd_code].iloc[0].to_dict()
+                    raw_chk = edit_pwd_init_data.get('checklist_json', '')
+                    if raw_chk:
+                        try:
+                            chk_init_saved = json.loads(raw_chk)
+                        except Exception:
+                            pass
+                else:
+                    st.warning("هنوز هیچ پودر اولیه‌ای ثبت نشده است.")
+
+            with st.expander("📝 فرم اطلاعات و چک‌لیست پودر اولیه", expanded=True):
                 col1, col2 = st.columns(2)
                 with col1:
-                    powder_code = st.text_input("کد/شماره ظرف پودر فلز (مانند: PWD-316-01)")
-                    material = st.selectbox("جنس پودر", ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"])
+                    def_pwd_code = edit_pwd_init_data.get('powder_code', '') if mode_pwd_init == "ویرایش پودر موجود" else ""
+                    powder_code = st.text_input("کد/شماره ظرف پودر فلز (مانند: PWD-316-01)", value=def_pwd_code, disabled=(mode_pwd_init == "ویرایش پودر موجود"))
+                    
+                    mat_options = ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"]
+                    def_mat_idx = mat_options.index(edit_pwd_init_data['material']) if mode_pwd_init == "ویرایش پودر موجود" and edit_pwd_init_data.get('material') in mat_options else 0
+                    material = st.selectbox("جنس پودر", mat_options, index=def_mat_idx)
                 with col2:
-                    weight_g = st.number_input("وزن پودر (گرم)", min_value=0.0, value=10000.0)
-                    date_str = st.date_input("تاریخ ورود/تست").strftime("%Y-%m-%d")
+                    def_wt = float(edit_pwd_init_data.get('weight_g', 10000.0))
+                    weight_g = st.number_input("وزن پودر (گرم)", min_value=0.0, value=def_wt)
+                    
+                    def_date_val = datetime.strptime(edit_pwd_init_data.get('date', datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
+                    date_str = st.date_input("تاریخ ورود/تست", value=def_date_val).strftime("%Y-%m-%d")
                     
                 st.markdown("---")
                 st.subheader("📋 چک‌لیست آزمون‌های خواص پودر")
@@ -656,28 +675,32 @@ else:
                 qc_results = {}
                 for item in checklist:
                     c1, c2, c3 = st.columns([3, 2, 4])
+                    saved_item = chk_init_saved.get(item, {})
+                    def_status = saved_item.get('status', 'تایید') if isinstance(saved_item, dict) else 'تایید'
+                    def_note = saved_item.get('note', '') if isinstance(saved_item, dict) else ''
+                    
                     with c1: st.write(f"**{item}**")
-                    with c2: status = st.selectbox("وضعیت", ["تایید", "رد"], key=f"chk_p_{item}")
-                    with c3: note = st.text_input("ملاحظات / توضیحات", key=f"note_p_{item}")
+                    with c2: status = st.selectbox("وضعیت", ["تایید", "رد"], index=0 if def_status=="تایید" else 1, key=f"chk_p_{item}")
+                    with c3: note = st.text_input("ملاحظات / توضیحات", value=def_note, key=f"note_p_{item}")
                     qc_results[item] = {"status": status, "note": note}
                     
                 btn_c1, btn_c2 = st.columns([3, 2])
                 with btn_c1:
                     save_pwd_init = st.button("💾 ذخیره در بایگانی پودر اولیه")
                     if save_pwd_init:
-                        if powder_code:
+                        target_pwd_code = def_pwd_code if mode_pwd_init == "ویرایش پودر موجود" else powder_code
+                        if target_pwd_code:
                             c = conn.cursor()
                             c.execute("""INSERT OR REPLACE INTO powders 
                                          (powder_code, material, weight_g, date, checklist_json)
                                          VALUES (?, ?, ?, ?, ?)""",
-                                      (powder_code, material, weight_g, date_str, json.dumps(qc_results, ensure_ascii=False)))
+                                      (target_pwd_code, material, weight_g, date_str, json.dumps(qc_results, ensure_ascii=False)))
                             conn.commit()
-                            st.success(f"اطلاعات پودر {powder_code} با موفقیت ذخیره شد.")
+                            st.success(f"اطلاعات پودر {target_pwd_code} با موفقیت ذخیره شد.")
                             st.rerun()
                         else:
                             st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
                 with btn_c2:
-                    # استخراج کامل آزمون‌ها و نوت‌ها در اکسل خروجی
                     flat_powders = flatten_powder_df(powders_df) if not powders_df.empty else pd.DataFrame()
                     excel_file = export_to_styled_excel(flat_powders, "پودرهای اولیه")
                     st.download_button(
@@ -706,31 +729,65 @@ else:
             if not combined_source_powders:
                 st.warning("ابتدا باید حداقل یک ظرف پودر اولیه یا پودر نورا ثبت کرده باشید.")
             else:
+                st.subheader("حالت ثبت / ویرایش پودر بازیافتی")
+                mode_rec = st.radio("", ["ثبت پارت جدید", "ویرایش پارت موجود"], horizontal=True, key="mode_rec")
+                
+                edit_rec_data = {}
+                if mode_rec == "ویرایش پارت موجود":
+                    if not recycled_df.empty:
+                        rec_batches = recycled_df['recycled_batch_code'].tolist()
+                        sel_rec_batch = st.selectbox("انتخاب شناسه پارت بازیافت جهت ویرایش:", rec_batches, key="sel_rec_batch")
+                        edit_rec_data = recycled_df[recycled_df['recycled_batch_code'] == sel_rec_batch].iloc[0].to_dict()
+                    else:
+                        st.warning("هیچ رکوردی برای بازیافت ثبت نشده است.")
+
                 rc1, rc2 = st.columns(2)
                 with rc1:
-                    selected_source = st.selectbox("شماره/کد ظرف پودر مبدا (خریداری‌شده اولیه / نورا)", combined_source_powders)
+                    saved_src = edit_rec_data.get('powder_code', '')
+                    def_src_idx = 0
+                    for idx, s_name in enumerate(combined_source_powders):
+                        if s_name.startswith(saved_src):
+                            def_src_idx = idx
+                            break
+                    selected_source = st.selectbox("شماره/کد ظرف پودر مبدا (خریداری‌شده اولیه / نورا)", combined_source_powders, index=def_src_idx)
                     clean_source_code = selected_source.split(" [")[0] if selected_source else ""
-                    recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)")
-                    input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=5000.0)
+                    
+                    def_rec_batch = edit_rec_data.get('recycled_batch_code', '') if mode_rec == "ویرایش پارت موجود" else ""
+                    recycled_batch_code = st.text_input("شناسه پارت بازیافت (مانند: REC-PWD-01)", value=def_rec_batch)
+                    
+                    def_inp_wt = float(edit_rec_data.get('input_powder_g', 5000.0))
+                    input_powder_g = st.number_input("پودر ورودی به دستگاه (گرم)", min_value=0.0, value=def_inp_wt)
                 with rc2:
-                    unrecyclable_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=200.0)
+                    def_unrec_wt = float(edit_rec_data.get('unrecyclable_powder_g', 200.0))
+                    unrecyclable_powder_g = st.number_input("پودر مصرف شده غیر قابل بازیافت (گرم)", min_value=0.0, value=def_unrec_wt)
                     recycled_powder_g = input_powder_g - unrecyclable_powder_g
                     st.metric("مقدار پودر بازیافت‌شده قابل استفاده (گرم)", f"{recycled_powder_g:,.1f}")
-                    rec_date = st.date_input("تاریخ بازیافت").strftime("%Y-%m-%d")
-                    rec_notes = st.text_input("توضیحات و ملاحظات غربال‌گری / الک")
+                    
+                    def_rec_dt = datetime.strptime(edit_rec_data.get('date', datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
+                    rec_date = st.date_input("تاریخ بازیافت", value=def_rec_dt).strftime("%Y-%m-%d")
+                    rec_notes = st.text_input("توضیحات و ملاحظات غربال‌گری / الک", value=edit_rec_data.get('notes', ''))
                 
                 r_btn1, r_btn2 = st.columns([3, 2])
                 with r_btn1:
-                    rec_submit = st.button("💾 ثبت رکورد پودر بازیافتی")
+                    rec_submit = st.button("💾 ذخیره رکورد پودر بازیافتی")
                     if rec_submit:
-                        c = conn.cursor()
-                        c.execute("""INSERT INTO recycled_powders 
-                                     (powder_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, date, notes)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                                  (clean_source_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, rec_date, rec_notes))
-                        conn.commit()
-                        st.success("اطلاعات پودر بازیافتی با موفقیت ثبت شد.")
-                        st.rerun()
+                        if recycled_batch_code:
+                            c = conn.cursor()
+                            if mode_rec == "ویرایش پارت موجود" and 'id' in edit_rec_data:
+                                c.execute("""UPDATE recycled_powders SET
+                                             powder_code=?, recycled_batch_code=?, input_powder_g=?, unrecyclable_powder_g=?, recycled_powder_g=?, date=?, notes=?
+                                             WHERE id=?""",
+                                          (clean_source_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, rec_date, rec_notes, edit_rec_data['id']))
+                            else:
+                                c.execute("""INSERT INTO recycled_powders 
+                                             (powder_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, date, notes)
+                                             VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                                          (clean_source_code, recycled_batch_code, input_powder_g, unrecyclable_powder_g, recycled_powder_g, rec_date, rec_notes))
+                            conn.commit()
+                            st.success("اطلاعات پودر بازیافتی با موفقیت ثبت شد.")
+                            st.rerun()
+                        else:
+                            st.error("شناسه پارت بازیافت الزامی است.")
                 with r_btn2:
                     display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP) if not recycled_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                     excel_file_rec = export_to_styled_excel(display_recycled_df, "پودرهای بازیافتی")
@@ -751,28 +808,46 @@ else:
                 st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
 
         with sub_tab3:
-            st.subheader("🏭 پودرهای خریداری شده از نورا (ثبت سریع)")
+            st.subheader("🏭 پودرهای خریداری شده از نورا (ثبت سریع و ویرایش)")
             
+            mode_nora = st.radio("", ["ثبت پودر جدید نورا", "ویرایش پودر موجود نورا"], horizontal=True, key="mode_nora")
+            edit_nora_data = {}
+            if mode_nora == "ویرایش پودر موجود نورا":
+                if not nora_df.empty:
+                    nora_codes = nora_df['powder_code'].tolist()
+                    sel_nora_code = st.selectbox("انتخاب کد پودر نورا جهت ویرایش:", nora_codes, key="sel_nora_code")
+                    edit_nora_data = nora_df[nora_df['powder_code'] == sel_nora_code].iloc[0].to_dict()
+                else:
+                    st.warning("هیچ پودری از نورا ثبت نشده است.")
+
             nc1, nc2 = st.columns(2)
             with nc1:
-                nora_powder_code = st.text_input("کد/شماره ظرف پودر نورا (مانند: NORA-PWD-01)")
-                nora_material = st.selectbox("نوع متریال / جنس پودر", ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"], key="nora_mat")
+                def_nora_code = edit_nora_data.get('powder_code', '') if mode_nora == "ویرایش پودر موجود نورا" else ""
+                nora_powder_code = st.text_input("کد/شماره ظرف پودر نورا (مانند: NORA-PWD-01)", value=def_nora_code, disabled=(mode_nora == "ویرایش پودر موجود نورا"))
+                
+                n_mat_opts = ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X", "سایر"]
+                def_nmat_idx = n_mat_opts.index(edit_nora_data['material']) if mode_nora == "ویرایش پودر موجود نورا" and edit_nora_data.get('material') in n_mat_opts else 0
+                nora_material = st.selectbox("نوع متریال / جنس پودر", n_mat_opts, index=def_nmat_idx, key="nora_mat")
             with nc2:
-                nora_weight_g = st.number_input("مقدار / وزن پودر (گرم)", min_value=0.0, value=10000.0, key="nora_wt")
-                nora_date = st.date_input("تاریخ ورود/تحویل", key="nora_dt").strftime("%Y-%m-%d")
+                def_nwt = float(edit_nora_data.get('weight_g', 10000.0))
+                nora_weight_g = st.number_input("مقدار / وزن پودر (گرم)", min_value=0.0, value=def_nwt, key="nora_wt")
+                
+                def_ndt = datetime.strptime(edit_nora_data.get('date', datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
+                nora_date = st.date_input("تاریخ ورود/تحویل", value=def_ndt, key="nora_dt").strftime("%Y-%m-%d")
                 
             n_btn1, n_btn2 = st.columns([3, 2])
             with n_btn1:
                 nora_submit = st.button("💾 ثبت پودر نورا در بایگانی")
                 if nora_submit:
-                    if nora_powder_code:
+                    target_ncode = def_nora_code if mode_nora == "ویرایش پودر موجود نورا" else nora_powder_code
+                    if target_ncode:
                         c = conn.cursor()
                         c.execute("""INSERT OR REPLACE INTO nora_powders 
                                      (powder_code, material, weight_g, date)
                                      VALUES (?, ?, ?, ?)""",
-                                  (nora_powder_code, nora_material, nora_weight_g, nora_date))
+                                  (target_ncode, nora_material, nora_weight_g, nora_date))
                         conn.commit()
-                        st.success(f"پودر نورا با کد {nora_powder_code} با موفقیت ثبت شد.")
+                        st.success(f"پودر نورا با کد {target_ncode} با موفقیت ذخیره شد.")
                         st.rerun()
                     else:
                         st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
@@ -798,7 +873,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۲. فرم تولید
+    # ۲. فرم تولید (امکان ثبت و ویرایش قطعه)
     # ---------------------------------------------------------
     elif choice == "🏭 فرم تولید":
         st.header("🏭 فرم رکورد تولید (Production Form.xlsx)")
@@ -916,7 +991,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۳. کنترل کیفیت (شامل استخراج کامل نتایج آزمون‌ها و نوت‌ها)
+    # ۳. کنترل کیفیت (امکان بازخوانی و ادیت نتایج و نوت‌های قبلی)
     # ---------------------------------------------------------
     elif choice == "❇️ کنترل کیفیت":
         st.header("🔬 فرم کنترل کیفیت (QC.xlsx)")
@@ -927,12 +1002,30 @@ else:
         if parts_list.empty:
             st.warning("هیچ قطعه‌ای در بخش فرم تولید ثبت نشده است.")
         else:
-            selected_part = st.selectbox("انتخاب کد قطعه جهت ارزیابی کیفیت", parts_list['part_code'])
+            selected_part = st.selectbox("انتخاب کد قطعه جهت ارزیابی / ویرایش کیفیت:", parts_list['part_code'])
             part_info = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_part,)).iloc[0]
+            
+            # بررسی آیا قبلا برای این قطعه فرم QC ثبت شده است
+            existing_qc = pd.read_sql_query("SELECT * FROM qc WHERE part_code=?", conn, params=(selected_part,))
+            saved_qc_data = {}
+            saved_inspector, saved_engineer, saved_manager = "", "", ""
+            
+            if not existing_qc.empty:
+                st.info("⚠️ برای این قطعه قبلاً فرم QC ثبت شده است؛ مقادیر و نوت‌های قبلی بارگذاری شدند و می‌توانید آن‌ها را ویرایش کنید.")
+                qc_row = existing_qc.iloc[0]
+                saved_inspector = qc_row.get('qc_inspector', '')
+                saved_engineer = qc_row.get('qc_engineer', '')
+                saved_manager = qc_row.get('qa_manager', '')
+                raw_qc_json = qc_row.get('qc_checks_json', '')
+                if raw_qc_json:
+                    try:
+                        saved_qc_data = json.loads(raw_qc_json)
+                    except Exception:
+                        pass
             
             st.info(f"**نام قطعه:** {part_info['part_name']} | **دستگاه:** {part_info['machine_model']} | **شماره ظرف پودر:** {part_info['powder_code']}")
             
-            st.subheader("📋 تست‌ها و بازرسی‌های کیفی (با قابلیت ثبت نتیجه و ملاحظات تفکیکی)")
+            st.subheader("📋 تست‌ها و بازرسی‌های کیفی (شامل نتیجه و یادداشت‌های تفکیکی)")
             tests = [
                 ("1.1.1 ظاهر سطح و عیوب قابل رؤیت", "چشمی"),
                 ("1.1.2 کیفیت حذف ساپورت", "چشمی"),
@@ -950,21 +1043,25 @@ else:
             qc_data = {}
             for t_title, t_type in tests:
                 q1, q2, q3 = st.columns([3, 2, 4])
+                item_prev = saved_qc_data.get(t_title, {})
+                prev_res = item_prev.get('result', 'تایید') if isinstance(item_prev, dict) else 'تایید'
+                prev_note = item_prev.get('note', '') if isinstance(item_prev, dict) else ''
+                
                 with q1: st.write(f"**{t_title}**")
-                with q2: res = st.selectbox("نتیجه", ["تایید", "رد"], key=f"qc_sel_{t_title}")
-                with q3: note = st.text_input("ملاحظات", key=f"qc_n_{t_title}")
+                with q2: res = st.selectbox("نتیجه", ["تایید", "رد"], index=0 if prev_res=="تایید" else 1, key=f"qc_sel_{t_title}")
+                with q3: note = st.text_input("ملاحظات", value=prev_note, key=f"qc_n_{t_title}")
                 qc_data[t_title] = {"result": res, "type": t_type, "note": note}
                 
             st.markdown("---")
             st.subheader("👥 مسئولین و تاییدکنندگان")
             sc1, sc2, sc3 = st.columns(3)
-            with sc1: inspector = st.text_input("بازرس کنترل کیفیت")
-            with sc2: engineer = st.text_input("مسئول فنی / مهندسی کیفیت")
-            with sc3: manager = st.text_input("مدیر تضمین کیفیت")
+            with sc1: inspector = st.text_input("بازرس کنترل کیفیت", value=saved_inspector)
+            with sc2: engineer = st.text_input("مسئول فنی / مهندسی کیفیت", value=saved_engineer)
+            with sc3: manager = st.text_input("مدیر تضمین کیفیت", value=saved_manager)
             
             qc_btn1, qc_btn2 = st.columns([3, 2])
             with qc_btn1:
-                qc_submit = st.button("💾 ثبت نهایی فرم QC")
+                qc_submit = st.button("💾 ثبت / به‌روزرسانی نهایی فرم QC")
                 if qc_submit:
                     c = conn.cursor()
                     c.execute("""INSERT OR REPLACE INTO qc 
@@ -976,7 +1073,6 @@ else:
                     st.success("نتایج ارزیابی QC با موفقیت ذخیره شد.")
                     st.rerun()
             with qc_btn2:
-                # استخراج تفکیکی تمام تست‌ها و نوت‌های QC در فایل اکسل
                 qc_all_df = pd.read_sql_query("SELECT * FROM qc", conn)
                 flat_qc_df = flatten_qc_df(qc_all_df) if not qc_all_df.empty else pd.DataFrame()
                 excel_file_qc = export_to_styled_excel(flat_qc_df, "گزارشات کامل QC")
@@ -1000,7 +1096,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۴. محاسبه‌گر هزینه
+    # ۴. محاسبه‌گر هزینه (امکان بازخوانی و ادیت محاسبات قبلی)
     # ---------------------------------------------------------
     elif choice == "💰 محاسبه‌گر هزینه":
         st.header("💰 محاسبه‌گر بهای تمام شده و قیمت فروش (Cost Calculator.xlsx)")
@@ -1044,29 +1140,55 @@ else:
         def_part_name = ""
         def_machine = "M300"
         def_print_time = 10.0
+        def_vol = 50.0
+        def_sup_vol = 10.0
+        def_parts_plate = 1
+        def_design_time = 2.0
+        def_post_time = 3.0
+        def_overhead = 35.0
+        def_pwd_type = "Steel 316"
         
         if selected_part != "جدید":
-            p_row = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_part,)).iloc[0]
-            def_part_name = p_row['part_name']
-            def_machine = p_row['machine_model'] if p_row['machine_model'] in ["M120", "M300"] else "M300"
-            def_print_time = float(p_row['build_time_hrs']) if p_row['build_time_hrs'] else 10.0
+            # بررسی اگر قبلا محاسبه هزینه ثبت شده بود مقادیر قبلی را لود کن
+            prev_cost_row = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(selected_part,))
+            if not prev_cost_row.empty:
+                c_row = prev_cost_row.iloc[0]
+                def_part_name = c_row['part_name']
+                def_machine = c_row['machine_type']
+                def_print_time = float(c_row['print_time_hrs'])
+                def_vol = float(c_row['volume_cm3'])
+                def_sup_vol = float(c_row['support_volume_cm3'])
+                def_parts_plate = int(c_row['parts_on_plate'])
+                def_design_time = float(c_row['design_time_hrs'])
+                def_post_time = float(c_row['post_process_time_hrs'])
+                def_overhead = float(c_row['overhead_pct'])
+                def_pwd_type = c_row['powder_type']
+                st.info("⚠️ محاسبات مالی قبلی این قطعه لود شد و می‌توانید آن‌ها را تغییر دهید.")
+            else:
+                p_row = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_part,)).iloc[0]
+                def_part_name = p_row['part_name']
+                def_machine = p_row['machine_model'] if p_row['machine_model'] in ["M120", "M300"] else "M300"
+                def_print_time = float(p_row['build_time_hrs']) if p_row['build_time_hrs'] else 10.0
 
         st.subheader("📥 مشخصات فنی و ورودی‌های قطعه")
         c1, c2, c3 = st.columns(3)
         with c1:
             p_code = st.text_input("شناسه/کد قطعه", value=selected_part if selected_part != "جدید" else "")
             p_name = st.text_input("نام قطعه", value=def_part_name)
-            powder_type = st.selectbox("نوع پودر فلزی", list(RATES["density"].keys()))
+            
+            pwd_type_list = list(RATES["density"].keys())
+            def_ptype_idx = pwd_type_list.index(def_pwd_type) if def_pwd_type in pwd_type_list else 0
+            powder_type = st.selectbox("نوع پودر فلزی", pwd_type_list, index=def_ptype_idx)
         with c2:
-            vol_cm3 = st.number_input("حجم قطعه (cm3)", min_value=0.0, value=50.0)
-            sup_vol_cm3 = st.number_input("حجم ساپورت (cm3)", min_value=0.0, value=10.0)
+            vol_cm3 = st.number_input("حجم قطعه (cm3)", min_value=0.0, value=def_vol)
+            sup_vol_cm3 = st.number_input("حجم ساپورت (cm3)", min_value=0.0, value=def_sup_vol)
             machine_type = st.selectbox("نوع دستگاه", ["M120", "M300"], index=1 if def_machine=="M300" else 0)
         with c3:
-            parts_on_plate = st.number_input("تعداد قطعات روی صفحه", min_value=1, value=1)
+            parts_on_plate = st.number_input("تعداد قطعات روی صفحه", min_value=1, value=def_parts_plate)
             print_time_hrs = st.number_input("زمان کل چاپ (ساعت)", min_value=0.0, value=def_print_time)
-            design_time_hrs = st.number_input("زمان طراحی (ساعت)", min_value=0.0, value=2.0)
-            post_time_hrs = st.number_input("زمان پرداخت‌کاری (ساعت)", min_value=0.0, value=3.0)
-            overhead_pct = st.number_input("ضریب سربار (%)", min_value=0.0, value=35.0)
+            design_time_hrs = st.number_input("زمان طراحی (ساعت)", min_value=0.0, value=def_design_time)
+            post_time_hrs = st.number_input("زمان پرداخت‌کاری (ساعت)", min_value=0.0, value=def_post_time)
+            overhead_pct = st.number_input("ضریب سربار (%)", min_value=0.0, value=def_overhead)
 
         density = RATES["density"][powder_type]
         net_weight_g = vol_cm3 * density
@@ -1101,7 +1223,7 @@ else:
         
         cost_btn1, cost_btn2 = st.columns([3, 2])
         with cost_btn1:
-            save_cost_calc = st.button("💾 ذخیره برآورد قیمت")
+            save_cost_calc = st.button("💾 ذخیره / به‌روزرسانی برآورد قیمت")
             if save_cost_calc:
                 if p_code:
                     c = conn.cursor()
@@ -1118,7 +1240,7 @@ else:
                          cost_operator, cost_post_process, cost_qc, cost_ventilation, cost_chiller,
                          total_production_cost, overhead_cost, final_price))
                     conn.commit()
-                    st.success("محاسبه هزینه با موفقیت ثبت شد.")
+                    st.success("محاسبه هزینه با موفقیت ذخیره شد.")
                     st.rerun()
                 else:
                     st.error("لطفاً شناسه قطعه را مشخص کنید.")
