@@ -462,7 +462,6 @@ st.markdown("""
         display: none !important;
     }
 
-    /* هماهنگ‌سازی رنگ کادرهای آماری به خاکستری هماهنگ با سایر کادرها */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -737,7 +736,7 @@ else:
         """, unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # ۱. پودر (آمار منحصراً از داده‌های خود بخش پودر خوانده می‌شود)
+    # ۱. پودر
     # ---------------------------------------------------------
     elif choice == "📦 پودر":
         st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -747,7 +746,6 @@ else:
         nora_df = pd.read_sql_query("SELECT * FROM nora_powders", conn)
         recycled_df = pd.read_sql_query("SELECT * FROM recycled_powders", conn)
 
-        # استخراج متریال‌ها فقط از بخش پودر
         all_materials_set = sorted(list(set(
             powders_df['material'].dropna().tolist() + 
             nora_df['material'].dropna().tolist() + 
@@ -770,21 +768,20 @@ else:
             mat_powder_codes = f_powders['powder_code'].tolist() + f_nora['powder_code'].tolist()
             f_recycled = recycled_df[recycled_df['powder_code'].isin(mat_powder_codes)]
 
-        # محاسبه تمام شاخص‌ها فقط و فقط از بخش پودر
         total_bought_g = (f_powders['weight_g'].sum() if not f_powders.empty else 0.0) + (f_nora['weight_g'].sum() if not f_nora.empty else 0.0)
         total_recycled_g = f_recycled['recycled_powder_g'].sum() if not f_recycled.empty else 0.0
         total_used_g = f_recycled['input_powder_g'].sum() if not f_recycled.empty else 0.0
-        total_waste_g = f_recycled['unrecyclable_powder_g'].sum() if not f_recycled.empty else 0.0
+        
+        total_diff_waste_g = total_recycled_g - total_used_g
 
         sc1, sc2, sc3, sc4 = st.columns(4)
         sc1.metric("کل پودر خریداری‌شده", f"{total_bought_g:,.0f} گرم")
         sc2.metric("کل پودر بازیافت‌شده", f"{total_recycled_g:,.0f} گرم")
-        sc3.metric("کل پودر مصرف‌شده در تولید", f"{total_used_g:,.0f} گرم")
-        sc4.metric("کل ضایعات / غیرقابل بازیافت", f"{total_waste_g:,.0f} گرم")
+        sc3.metric("کل پودر ورودی به دستگاه‌ها", f"{total_used_g:,.0f} گرم")
+        sc4.metric("کل ضایعات / غیرقابل بازیافت", f"{total_diff_waste_g:,.0f} گرم")
 
         st.markdown("---")
         
-        # هر ۳ تب کامل اولیه، بازیافت و نورا
         sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده", "🏭 ۳- پودرهای خریداری شده از نورا"])
         
         with sub_tab1:
@@ -1591,7 +1588,7 @@ else:
             )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل (پرونده جامع فرم‌محور)
+    # ۶. بایگانی و گزارش‌گیری اکسل
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
