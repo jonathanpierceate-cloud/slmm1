@@ -706,7 +706,6 @@ else:
     # ---------------------------------------------------------
     if choice == "🏠 خانه":
         st.title("🧩 سامانه بایگانی و مدیریت تولید قطعات چاپ سه بعدی (SLM)")
-        st.caption("این سامانه فرم‌های «پودر»، «فرم تولید»، «کنترل کیفیت (QC)» و «محاسبه‌گر قیمت» را به هم مرتبط کرده و امکان بایگانی را فراهم می‌سازد.")
 
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -737,7 +736,7 @@ else:
         """, unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # ۱. پودر (با داشبورد آماری موجودی و مصرف بر اساس متریال)
+    # ۱. پودر
     # ---------------------------------------------------------
     elif choice == "📦 پودر":
         st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -748,7 +747,6 @@ else:
         recycled_df = pd.read_sql_query("SELECT * FROM recycled_powders", conn)
         prod_df_all = pd.read_sql_query("SELECT * FROM production", conn)
 
-        # --- داشبورد آماری پودر: پودر خریداری شده، بازیافت شده و مصرف شده ---
         all_materials_set = sorted(list(set(
             powders_df['material'].dropna().tolist() + 
             nora_df['material'].dropna().tolist() + 
@@ -761,7 +759,6 @@ else:
         with c_stat_head2:
             stat_mat_filter = st.selectbox("فیلتر بر اساس متریال:", ["همه متریال‌ها (کل)"] + all_materials_set, key="powder_stat_filter")
 
-        # فیلتر کردن دیتاها بر اساس متریال انتخابی
         if stat_mat_filter == "همه متریال‌ها (کل)":
             f_powders = powders_df
             f_nora = nora_df
@@ -770,8 +767,6 @@ else:
         else:
             f_powders = powders_df[powders_df['material'] == stat_mat_filter]
             f_nora = nora_df[nora_df['material'] == stat_mat_filter]
-            
-            # استخراج کدهای پودر مربوط به این متریال جهت فیلتر جداول بازیافت و تولید
             mat_powder_codes = f_powders['powder_code'].tolist() + f_nora['powder_code'].tolist()
             f_recycled = recycled_df[recycled_df['powder_code'].isin(mat_powder_codes)]
             f_prod = prod_df_all[prod_df_all['powder_code'].isin(mat_powder_codes)]
@@ -781,7 +776,6 @@ else:
         total_consumed_g = f_prod['input_powder_g'].sum() if not f_prod.empty else 0.0
         total_waste_g = (f_recycled['unrecyclable_powder_g'].sum() if not f_recycled.empty else 0.0) + (f_prod['waste_powder_g'].sum() if not f_prod.empty else 0.0)
 
-        # نمایش ۴ کارت آماری متریال
         sc1, sc2, sc3, sc4 = st.columns(4)
         sc1.metric("کل پودر خریداری‌شده", f"{total_bought_g:,.0f} گرم")
         sc2.metric("کل پودر بازیافت‌شده", f"{total_recycled_g:,.0f} گرم")
@@ -793,7 +787,6 @@ else:
         sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده", "🏭 ۳- پودرهای خریداری شده از نورا"])
         
         with sub_tab1:
-            st.subheader("حالت ثبت / ویرایش پودر اولیه")
             mode_pwd_init = st.radio("", ["ثبت پودر جدید", "ویرایش پودر موجود"], horizontal=True, key="mode_pwd_init")
             
             edit_pwd_init_data = {}
@@ -893,7 +886,6 @@ else:
             if not combined_source_powders:
                 st.warning("ابتدا باید حداقل یک ظرف پودر اولیه یا پودر نورا ثبت کرده باشید.")
             else:
-                st.subheader("حالت ثبت / ویرایش پودر بازیافتی")
                 mode_rec = st.radio("", ["ثبت پارت جدید", "ویرایش پارت موجود"], horizontal=True, key="mode_rec")
                 
                 edit_rec_data = {}
@@ -1045,7 +1037,6 @@ else:
         nora_powders_list = pd.read_sql_query("SELECT powder_code FROM nora_powders", conn)['powder_code'].tolist()
         all_powders = list(set(powders_list + nora_powders_list))
         
-        st.subheader("حالت")
         mode = st.radio("", ["ثبت قطعه جدید", "ویرایش قطعه موجود"], horizontal=True, key="prod_mode")
         
         edit_data = {}
@@ -1078,7 +1069,7 @@ else:
                 date_str = st.text_input("تاریخ ساخت (هجری شمسی)", value=def_prod_dt)
                 
             st.markdown("---")
-            st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت (فرمت ساعت:دقیقه مانند 08:30)")
+            st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت")
             tc1, tc2, tc3 = st.columns(3)
             with tc1:
                 def_build_time_str = hours_to_time_str(edit_data.get("build_time_hrs", 10.0)) if mode == "ویرایش قطعه موجود" else "10:00"
@@ -1220,7 +1211,7 @@ else:
             
             qc_date_input = st.text_input("تاریخ ثبت بازرسی (هجری شمسی)", value=saved_qc_date)
             
-            st.subheader("📋 تست‌ها و بازرسی‌های کیفی (شامل نتیجه و یادداشت‌های تفکیکی)")
+            st.subheader("📋 تست‌ها و بازرسی‌های کیفی")
             tests = [
                 ("1.1.1 ظاهر سطح و عیوب قابل رؤیت", "چشمی"),
                 ("1.1.2 کیفیت حذف ساپورت", "چشمی"),
