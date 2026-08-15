@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# ۱. توابع عمومی، پردازشی و تبدیل تاریخ و زمان (Top-Level)
+# ۱. توابع عمومی، پردازشی و تبدیل تاریخ و زمان
 # =========================================================
 
 def time_to_hours(t_val):
@@ -171,7 +171,7 @@ def format_cost_df_view(df):
             df_copy[col] = df_copy[col].apply(hours_to_time_str)
     return df_copy
 
-# --- موتور پیشرفته تولید اکسل فرم‌محور و چندبرگه ---
+# --- موتور پیشرفته تولید اکسل فرم‌محور چندسطره و جدولی ---
 def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی سامانه SLM"):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -735,7 +735,7 @@ else:
         2. **🏭 فرم تولید** — ثبت و ویرایش پارامترهای ساخت، زمان‌ها (HH:MM) و اوزان با خروجی اکسل فرم‌محور.
         3. **❇️ کنترل کیفیت (QC)** — ثبت و ویرایش نتایج تست‌ها و نوت‌ها با فرمت اکسل کاربرگی رسمی.
         4. **💰 محاسبه‌گر هزینه** — برآورد خودکار بهای تمام شده و قیمت فروش با آخرین نرخ‌های روز.
-        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه جامع قطعات و دریافت کاربرگ چندبرگه کامل.
+        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه جامع قطعات و دریافت کاربرگ تفکیکی و چندبرگه کامل.
         
         <br>
         <p style='color: #94a3b8; font-size: 1.1rem;'>امروز: {get_today_jalali()} | از منوی سمت راست بین صفحات جابه‌جا شوید.</p>
@@ -1561,7 +1561,7 @@ else:
             )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل (پرونده جامع فرم‌محور)
+    # ۶. بایگانی و گزارش‌گیری اکسل (با دکمه‌های مجزای فرم‌محور برای هر تب)
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
@@ -1583,6 +1583,7 @@ else:
                 st.success(f"اطلاعات کامل پرونده قطعه {search_code} با تاریخ شمسی یافت شد.")
                 tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر مصرفی", "🔬 کنترل کیفیت QC", "💰 برآورد مالی"])
                 
+                # ۱. تب تولید
                 with tab1:
                     st.subheader("مشخصات فنی و فرآیند ساخت")
                     prod_fmt = format_production_df_view(prod_df)
@@ -1590,6 +1591,44 @@ else:
                     disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP)
                     st.table(disp_prod.T)
                     
+                    prod_tab_sec = {
+                        "مشخصات عمومی قطعه و دستگاه": [
+                            ("کد قطعه", search_code),
+                            ("نام قطعه", p_row['part_name']),
+                            ("مدل دستگاه", p_row['machine_model']),
+                            ("شماره ظرف پودر مصرفی", p_row['powder_code']),
+                            ("تعداد روی صفحه", p_row['quantity']),
+                            ("تاریخ ساخت (شمسی)", format_jalali_date(p_row['date']))
+                        ],
+                        "زمان‌بندی فرآیند ساخت": [
+                            ("زمان تولید (ساعت:دقیقه)", hours_to_time_str(p_row['build_time_hrs'])),
+                            ("زمان توقف حین ساخت", hours_to_time_str(p_row['downtime_hrs'])),
+                            ("تاریخ و ساعت شروع", f"{format_jalali_date(p_row['start_date'])} {p_row['start_time']}"),
+                            ("تاریخ و ساعت پایان", f"{format_jalali_date(p_row['end_date'])} {p_row['end_time']}"),
+                            ("زمان آماده‌سازی دستگاه", hours_to_time_str(p_row['setup_time_hrs'])),
+                            ("زمان تمیزکاری دستگاه", hours_to_time_str(p_row['cleaning_time_hrs']))
+                        ],
+                        "پارامترهای متریال، اوزان و صفحه ساخت": [
+                            ("پودر ورودی به دستگاه (گرم)", f"{p_row['input_powder_g']:,.1f}"),
+                            ("پودر غیرقابل بازیافت (گرم)", f"{p_row['waste_powder_g']:,.1f}"),
+                            ("وزن قطعه با ساپورت (گرم)", f"{p_row['part_with_support_g']:,.1f}"),
+                            ("وزن قطعه نهایی (گرم)", f"{p_row['final_part_g']:,.1f}"),
+                            ("درصد فیلتر دستگاه", f"{p_row['filter_percentage']}%"),
+                            ("کد صفحه ساخت", p_row['build_plate_code'] or "---"),
+                            ("وزن اولیه صفحه ساخت (گرم)", f"{p_row['build_plate_init_wt_g']:,.1f}"),
+                            ("وزن صفحه ساخت بعد پرداخت (گرم)", f"{p_row['build_plate_post_wt_g']:,.1f}")
+                        ]
+                    }
+                    excel_prod_tab_bytes = build_form_layout_excel(prod_tab_sec, title=f"فرآیند تولید - قطعه {search_code}")
+                    st.download_button(
+                        label="📥 دانلود خروجی اکسل این بخش",
+                        data=excel_prod_tab_bytes,
+                        file_name=f"production_tab_{search_code}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="btn_down_tab1_prod"
+                    )
+                    
+                # ۲. تب پودر
                 powder_code_val = p_row['powder_code']
                 powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code_val,))
                 powder_chk_dict = {}
@@ -1603,33 +1642,121 @@ else:
 
                 with tab2:
                     if not powder_df.empty:
+                        pwd_row = powder_df.iloc[0]
                         st.write(f"**کد ظرف پودر استفاده شده:** `{powder_code_val}`")
                         flat_powder = flatten_powder_df(powder_df)
                         st.table(flat_powder.T)
+                        
+                        powder_tab_sec = {
+                            "مشخصات عمومی ظرف پودر مصرفی قطعه": [
+                                ("کد ظرف پودر", pwd_row['powder_code']),
+                                ("نوع متریال پودر", pwd_row.get('material', '---')),
+                                ("وزن پودر (گرم)", f"{pwd_row.get('weight_g', 0):,.1f}"),
+                                ("تاریخ ورود / تست (شمسی)", format_jalali_date(pwd_row.get('date', '')))
+                            ]
+                        }
+                        if powder_chk_dict:
+                            powder_tab_sec["چک‌لیست نتایج آزمون‌های خواص پودر و ملاحظات"] = powder_chk_dict
+                            
+                        excel_pwd_tab_bytes = build_form_layout_excel(powder_tab_sec, title=f"اطلاعات پودر - قطعه {search_code}")
+                        st.download_button(
+                            label="📥 دانلود خروجی اکسل این بخش",
+                            data=excel_pwd_tab_bytes,
+                            file_name=f"powder_tab_{search_code}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="btn_down_tab2_pwd"
+                        )
                     else:
                         st.warning("اطلاعات پودر متناظر یافت نشد.")
                         
+                # ۳. تب QC
                 qc_chk_dict = {}
                 with tab3:
                     if not qc_df.empty:
+                        q_row = qc_df.iloc[0]
                         flat_qc = flatten_qc_df(qc_df)
                         st.table(flat_qc.T)
                         try:
-                            qc_chk_dict = json.loads(qc_df.iloc[0].get('qc_checks_json', '{}'))
+                            qc_chk_dict = json.loads(q_row.get('qc_checks_json', '{}'))
                         except Exception:
                             pass
+                        
+                        qc_tab_sec = {
+                            "مشخصات قطعه و تاییدکنندگان کنترل کیفیت": [
+                                ("کد قطعه", search_code),
+                                ("نام قطعه", p_row['part_name']),
+                                ("مدل دستگاه ساخت", p_row['machine_model']),
+                                ("شماره ظرف پودر مصرفی", powder_code_val),
+                                ("تاریخ بازرسی (شمسی)", format_jalali_date(q_row.get('date', ''))),
+                                ("بازرس کنترل کیفیت", q_row.get('qc_inspector', '---')),
+                                ("مسئول فنی / مهندسی کیفیت", q_row.get('qc_engineer', '---')),
+                                ("مدیر تضمین کیفیت", q_row.get('qa_manager', '---'))
+                            ],
+                            "چک‌لیست آزمون‌ها، نتایج بازرسی و ملاحظات فنی (QC)": qc_chk_dict
+                        }
+                        excel_qc_tab_bytes = build_form_layout_excel(qc_tab_sec, title=f"کنترل کیفیت - قطعه {search_code}")
+                        st.download_button(
+                            label="📥 دانلود خروجی اکسل این بخش",
+                            data=excel_qc_tab_bytes,
+                            file_name=f"qc_tab_{search_code}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="btn_down_tab3_qc"
+                        )
                     else:
                         st.info("فرم کنترل کیفیت برای این قطعه هنوز ثبت نشده است.")
                         
+                # ۴. تب مالی
                 with tab4:
                     if not cost_df.empty:
+                        cst_row = cost_df.iloc[0]
                         cost_fmt = format_cost_df_view(cost_df)
                         disp_cost = cost_fmt.rename(columns=FARSI_HEADERS_MAP)
                         st.table(disp_cost.T)
-                        st.metric("قیمت نهایی فروش (ریال)", f"{cost_df['final_price'].values[0]:,.0f}")
+                        st.metric("قیمت نهایی فروش (ریال)", f"{cst_row['final_price']:,.0f}")
+                        
+                        cost_tab_sec = {
+                            "ورودی‌های مهندسی و مشخصات فنی قطعه": [
+                                ("کد قطعه", search_code),
+                                ("نام قطعه", p_row['part_name']),
+                                ("نوع پودر فلزی", cst_row['powder_type']),
+                                ("مدل دستگاه انتخابی", cst_row['machine_type']),
+                                ("حجم قطعه (cm3)", f"{cst_row['volume_cm3']:.2f}"),
+                                ("حجم ساپورت (cm3)", f"{cst_row['support_volume_cm3']:.2f}"),
+                                ("وزن خالص قطعه (گرم)", f"{cst_row['net_weight_g']:.1f}"),
+                                ("وزن ساپورت (گرم)", f"{cst_row['support_weight_g']:.1f}"),
+                                ("تعداد روی صفحه", cst_row['parts_on_plate']),
+                                ("زمان کل چاپ", hours_to_time_str(cst_row['print_time_hrs'])),
+                                ("زمان طراحی", hours_to_time_str(cst_row['design_time_hrs'])),
+                                ("زمان پرداخت", hours_to_time_str(cst_row['post_process_time_hrs']))
+                            ],
+                            "تفکیک هزینه‌های مستقیم، سربار و قیمت فروش": [
+                                ("هزینه پودر مصرفی (ریال)", f"{cst_row['powder_cost_total']:,.0f}"),
+                                ("هزینه گاز آرگون (ریال)", f"{cst_row['argon_cost_total']:,.0f}"),
+                                ("استهلاک دستگاه ساخت (ریال)", f"{cst_row['depreciation_cost_total']:,.0f}"),
+                                ("هزینه برق مصرفی (ریال)", f"{cst_row['power_cost_total']:,.0f}"),
+                                ("دستمزد مهندسی و طراحی (ریال)", f"{cst_row['engineering_cost_total']:,.0f}"),
+                                ("دستمزد اپراتور دستگاه (ریال)", f"{cst_row['operator_cost_total']:,.0f}"),
+                                ("هزینه پرداخت‌کاری سطحی (ریال)", f"{cst_row['post_process_cost_total']:,.0f}"),
+                                ("هزینه تست‌های کیفی QC (ریال)", f"{cst_row['qc_cost_total']:,.0f}"),
+                                ("هزینه تهویه و چیلر (ریال)", f"{cst_row['utility_ventilation'] + cst_row['utility_chiller']:,.0f}"),
+                                ("ضریب سربار کارگاهی (%)", f"{cst_row['overhead_pct']}%"),
+                                ("بهای تمام شده کل (ریال)", f"{cst_row['total_production_cost']:,.0f}"),
+                                ("قیمت نهایی قابل ارائه به مشتری (ریال)", f"{cst_row['final_price']:,.0f}")
+                            ]
+                        }
+                        excel_cost_tab_bytes = build_form_layout_excel(cost_tab_sec, title=f"برآورد مالی - قطعه {search_code}")
+                        st.download_button(
+                            label="📥 دانلود خروجی اکسل این بخش",
+                            data=excel_cost_tab_bytes,
+                            file_name=f"cost_tab_{search_code}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            key="btn_down_tab4_cost"
+                        )
                     else:
                         st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
                 
+                # ۵. دکمه خروجی جامع پرونده (کل بخش‌ها در یک فایل فرم‌محور)
+                st.markdown("---")
                 dossier_sections = {
                     "۱- مشخصات و شناسنامه فرآیند تولید قطعه": [
                         ("کد قطعه", search_code),
@@ -1690,9 +1817,9 @@ else:
 
                 excel_dossier_bytes = build_form_layout_excel(dossier_sections, title=f"شناسنامه پرونده جامع قطعه {search_code}")
                 st.download_button(
-                    label="📥 دانلود خروجی اکسل",
+                    label=f"📥 دانلود خروجی اکسل پرونده جامع قطعه {search_code}",
                     data=excel_dossier_bytes,
-                    file_name=f"part_dossier_form_{search_code}.xlsx",
+                    file_name=f"part_dossier_complete_{search_code}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="btn_down_part_full_styled"
                 )
