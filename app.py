@@ -227,14 +227,13 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- موتور پیشرفته تولید اکسل فرم‌محور و چندسطره/چندستونه ---
+# --- موتور پیشرفته تولید اکسل فرم‌محور ---
 def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی سامانه SLM"):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = title[:30]
     ws.sheet_view.rightToLeft = True
 
-    # فونت‌ها و رنگ‌ها
     title_font = Font(name='B Nazanin', size=15, bold=True, color='FFFFFF')
     title_fill = PatternFill(start_color='0F172A', end_color='0F172A', fill_type='solid')
     
@@ -256,7 +255,6 @@ def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی س
         bottom=Side(style='thin', color='CBD5E1')
     )
 
-    # عنوان اصلی
     ws.merge_cells('A1:F1')
     c_title = ws['A1']
     c_title.value = title
@@ -268,7 +266,6 @@ def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی س
     curr_row = 3
 
     for sec_title, sec_content in sections_dict.items():
-        # هدر بخش
         ws.merge_cells(start_row=curr_row, start_column=1, end_row=curr_row, end_column=6)
         c_sec = ws.cell(row=curr_row, column=1, value=sec_title)
         c_sec.font = sec_font
@@ -277,50 +274,34 @@ def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی س
         ws.row_dimensions[curr_row].height = 28
         curr_row += 1
 
-        # اگر بخش به‌صورت فیلدهای مشخصات (Pairs) باشد (چندستونه و چندسطره)
         if isinstance(sec_content, list) and len(sec_content) > 0 and isinstance(sec_content[0], tuple):
             pairs = sec_content
-            # چینش دو جفت لیبل-مقدار در هر سطر (۴ ستون: لیبل۱، مقدار۱، لیبل۲، مقدار۲)
             for i in range(0, len(pairs), 2):
                 ws.row_dimensions[curr_row].height = 24
-                # جفت اول
                 l1, v1 = pairs[i]
                 c_l1 = ws.cell(row=curr_row, column=1, value=str(l1))
-                c_l1.font = lbl_font
-                c_l1.fill = lbl_fill
-                c_l1.alignment = Alignment(horizontal='right', vertical='center')
-                c_l1.border = thin_border
+                c_l1.font = lbl_font; c_l1.fill = lbl_fill; c_l1.alignment = Alignment(horizontal='right', vertical='center'); c_l1.border = thin_border
 
                 ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
                 c_v1 = ws.cell(row=curr_row, column=2, value=str(v1))
-                c_v1.font = val_font
-                c_v1.alignment = Alignment(horizontal='right', vertical='center')
-                c_v1.border = thin_border
+                c_v1.font = val_font; c_v1.alignment = Alignment(horizontal='right', vertical='center'); c_v1.border = thin_border
                 ws.cell(row=curr_row, column=3).border = thin_border
 
-                # جفت دوم
                 if i + 1 < len(pairs):
                     l2, v2 = pairs[i+1]
                     c_l2 = ws.cell(row=curr_row, column=4, value=str(l2))
-                    c_l2.font = lbl_font
-                    c_l2.fill = lbl_fill
-                    c_l2.alignment = Alignment(horizontal='right', vertical='center')
-                    c_l2.border = thin_border
+                    c_l2.font = lbl_font; c_l2.fill = lbl_fill; c_l2.alignment = Alignment(horizontal='right', vertical='center'); c_l2.border = thin_border
 
                     ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
                     c_v2 = ws.cell(row=curr_row, column=5, value=str(v2))
-                    c_v2.font = val_font
-                    c_v2.alignment = Alignment(horizontal='right', vertical='center')
-                    c_v2.border = thin_border
+                    c_v2.font = val_font; c_v2.alignment = Alignment(horizontal='right', vertical='center'); c_v2.border = thin_border
                     ws.cell(row=curr_row, column=6).border = thin_border
                 else:
                     ws.merge_cells(start_row=curr_row, start_column=4, end_row=curr_row, end_column=6)
 
                 curr_row += 1
 
-        # اگر بخش به‌صورت جدول چک‌لیست / آزمون‌ها باشد
         elif isinstance(sec_content, dict):
-            # سربرگ جدول چک‌لیست
             ws.row_dimensions[curr_row].height = 24
             
             c_h1 = ws.cell(row=curr_row, column=1, value="ردیف")
@@ -335,34 +316,29 @@ def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی س
             c_h3.font = hdr_font; c_h3.fill = hdr_fill; c_h3.alignment = Alignment(horizontal='center', vertical='center'); c_h3.border = thin_border
             
             ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
-            c_h4 = ws.cell(row=curr_row, column=5, value="ملاحظات و توضیحات (Notes)")
+            c_h4 = ws.cell(row=curr_row, column=5, value="ملاحظات و توضیحات")
             c_h4.font = hdr_font; c_h4.fill = hdr_fill; c_h4.alignment = Alignment(horizontal='right', vertical='center'); c_h4.border = thin_border
             ws.cell(row=curr_row, column=6).border = thin_border
 
             curr_row += 1
             
-            # سطرهای چک‌لیست
             idx = 1
             for test_name, test_data in sec_content.items():
                 ws.row_dimensions[curr_row].height = 22
                 status_val = test_data.get('status', test_data.get('result', '')) if isinstance(test_data, dict) else str(test_data)
                 note_val = test_data.get('note', '') if isinstance(test_data, dict) else ''
 
-                # ردیف
                 c_idx = ws.cell(row=curr_row, column=1, value=idx)
                 c_idx.font = val_font; c_idx.alignment = Alignment(horizontal='center', vertical='center'); c_idx.border = thin_border
                 
-                # نام آزمون
                 ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
                 c_tn = ws.cell(row=curr_row, column=2, value=test_name)
                 c_tn.font = val_font; c_tn.alignment = Alignment(horizontal='right', vertical='center'); c_tn.border = thin_border
                 ws.cell(row=curr_row, column=3).border = thin_border
                 
-                # وضعیت / نتیجه
                 c_st = ws.cell(row=curr_row, column=4, value=status_val)
                 c_st.font = val_font; c_st.alignment = Alignment(horizontal='center', vertical='center'); c_st.border = thin_border
                 
-                # ملاحظات
                 ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
                 c_nt = ws.cell(row=curr_row, column=5, value=note_val)
                 c_nt.font = val_font; c_nt.alignment = Alignment(horizontal='right', vertical='center'); c_nt.border = thin_border
@@ -371,9 +347,8 @@ def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی س
                 curr_row += 1
                 idx += 1
 
-        curr_row += 1  # فاصله بین بخش‌ها
+        curr_row += 1
 
-    # تنظیم عرض ستون‌ها
     ws.column_dimensions['A'].width = 8
     ws.column_dimensions['B'].width = 22
     ws.column_dimensions['C'].width = 20
@@ -564,7 +539,7 @@ else:
         st.subheader("راهنمای گردش کار")
         st.markdown(f"""
         1. **📦 پودر** — ثبت و ویرایش ظروف پودر اولیه، بازیافتی و نورا با خروجی اکسل کامل چک‌لیست و یادداشت‌ها.
-        2. **🏭 فرم تولید** — ثبت و ویرایش پارامترهای ساخت، زمان‌ها (HH:MM) و اوزان با خروجی اکسل چندسطره فرم‌محور.
+        2. **🏭 فرم تولید** — ثبت و ویرایش پارامترهای ساخت، زمان‌ها (HH:MM) و اوزان با خروجی اکسل فرم‌محور.
         3. **❇️ کنترل کیفیت (QC)** — ثبت و ویرایش نتایج تست‌ها و نوت‌ها با فرمت اکسل کاربرگی رسمی.
         4. **💰 محاسبه‌گر هزینه** — برآورد خودکار بهای تمام شده و قیمت فروش با آخرین نرخ‌های روز.
         5. **🔍 بایگانی و جستجو** — استعلام شناسنامه جامع قطعات و دریافت کاربرگ چندبرگه کامل.
@@ -574,7 +549,7 @@ else:
         """, unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # ۱. پودر (با خروجی اکسل چندسطره و فرم‌محور)
+    # ۱. پودر
     # ---------------------------------------------------------
     elif choice == "📦 پودر":
         st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -659,7 +634,6 @@ else:
                         else:
                             st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
                 with btn_c2:
-                    # ساخت خروجی اکسل چندسطره فرم‌محور
                     target_pwd_for_export = def_pwd_code if mode_pwd_init == "ویرایش پودر موجود" else powder_code
                     export_sec = {
                         "مشخصات عمومی ظرف پودر اولیه": [
@@ -672,7 +646,7 @@ else:
                     }
                     excel_form_bytes = build_form_layout_excel(export_sec, title=f"شناسنامه آزمون پودر - {target_pwd_for_export or 'جدید'}")
                     st.download_button(
-                        label="📥 دانلود خروجی اکسل فرم‌محور (چندسطره و جدولی)",
+                        label="📥 دانلود خروجی اکسل",
                         data=excel_form_bytes,
                         file_name=f"powder_form_{target_pwd_for_export or 'record'}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -761,7 +735,7 @@ else:
                     }
                     excel_rec_bytes = build_form_layout_excel(export_rec_sec, title=f"فرم بازیافت پودر - {recycled_batch_code or 'جدید'}")
                     st.download_button(
-                        label="📥 دانلود خروجی اکسل فرم‌محور پودر بازیافتی",
+                        label="📥 دانلود خروجی اکسل",
                         data=excel_rec_bytes,
                         file_name=f"recycled_powder_{recycled_batch_code or 'record'}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -820,7 +794,7 @@ else:
                 }
                 excel_nora_bytes = build_form_layout_excel(export_nora_sec, title=f"فرم پودر نورا - {def_nora_code or nora_powder_code or 'جدید'}")
                 st.download_button(
-                    label="📥 دانلود خروجی اکسل فرم‌محور پودر نورا",
+                    label="📥 دانلود خروجی اکسل",
                     data=excel_nora_bytes,
                     file_name=f"nora_powder_{def_nora_code or nora_powder_code or 'record'}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -830,7 +804,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۲. فرم تولید (با خروجی اکسل کامل چندسطره و فرم‌محور)
+    # ۲. فرم تولید
     # ---------------------------------------------------------
     elif choice == "🏭 فرم تولید":
         st.header("🏭 فرم رکورد تولید")
@@ -968,7 +942,7 @@ else:
                 }
                 excel_prod_form_bytes = build_form_layout_excel(prod_export_sections, title=f"کاربرگ رکورد تولید - قطعه {target_pcode_exp or 'جدید'}")
                 st.download_button(
-                    label="📥 دانلود خروجی اکسل فرم‌محور (چندسطره و چندستونه)",
+                    label="📥 دانلود خروجی اکسل",
                     data=excel_prod_form_bytes,
                     file_name=f"production_form_{target_pcode_exp or 'record'}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -978,7 +952,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۳. کنترل کیفیت (با خروجی اکسل کامل چندسطره و فرم‌محور)
+    # ۳. کنترل کیفیت
     # ---------------------------------------------------------
     elif choice == "❇️ کنترل کیفیت":
         st.header("🔬 فرم کنترل کیفیت")
@@ -1078,7 +1052,7 @@ else:
                 }
                 excel_qc_form_bytes = build_form_layout_excel(export_qc_sec, title=f"گزارش کنترل کیفیت - قطعه {selected_part}")
                 st.download_button(
-                    label="📥 دانلود خروجی اکسل فرم‌محور (کاربرگ کامل QC با نوت‌ها)",
+                    label="📥 دانلود خروجی اکسل",
                     data=excel_qc_form_bytes,
                     file_name=f"qc_report_{selected_part}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1088,7 +1062,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۴. محاسبه‌گر هزینه (با خروجی اکسل کامل چندسطره و فرم‌محور)
+    # ۴. محاسبه‌گر هزینه
     # ---------------------------------------------------------
     elif choice == "💰 محاسبه‌گر هزینه":
         st.header("💰 محاسبه‌گر بهای تمام شده و قیمت فروش")
@@ -1272,7 +1246,7 @@ else:
             }
             excel_cost_form_bytes = build_form_layout_excel(export_cost_sec, title=f"برآورد مالی و بهای تمام شده - قطعه {p_code or 'جدید'}")
             st.download_button(
-                label="📥 دانلود خروجی اکسل فرم‌محور (کاربرگ مالی چندسطره)",
+                label="📥 دانلود خروجی اکسل",
                 data=excel_cost_form_bytes,
                 file_name=f"cost_estimate_{p_code or 'record'}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1384,7 +1358,7 @@ else:
             }
             excel_rates_form_bytes = build_form_layout_excel(export_rate_sec, title="جدول تنظیمات نرخ‌های پایه سامانه SLM")
             st.download_button(
-                label="📥 دانلود خروجی اکسل فرم‌محور نرخ‌های پایه",
+                label="📥 دانلود خروجی اکسل",
                 data=excel_rates_form_bytes,
                 file_name="system_rates_form.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1392,7 +1366,7 @@ else:
             )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل (پرونده جامع فرم‌محور)
+    # ۶. بایگانی و گزارش‌گیری اکسل
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
@@ -1414,7 +1388,6 @@ else:
                 st.success(f"اطلاعات کامل پرونده قطعه {search_code} با تاریخ شمسی یافت شد.")
                 tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر مصرفی", "🔬 کنترل کیفیت QC", "💰 برآورد مالی"])
                 
-                # ۱. تولید
                 with tab1:
                     st.subheader("مشخصات فنی و فرآیند ساخت")
                     prod_fmt = format_production_df_view(prod_df)
@@ -1422,7 +1395,6 @@ else:
                     disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP)
                     st.table(disp_prod.T)
                     
-                # ۲. پودر
                 powder_code_val = p_row['powder_code']
                 powder_df = pd.read_sql_query("SELECT * FROM powders WHERE powder_code=?", conn, params=(powder_code_val,))
                 powder_chk_dict = {}
@@ -1442,7 +1414,6 @@ else:
                     else:
                         st.warning("اطلاعات پودر متناظر یافت نشد.")
                         
-                # ۳. QC
                 qc_chk_dict = {}
                 with tab3:
                     if not qc_df.empty:
@@ -1455,7 +1426,6 @@ else:
                     else:
                         st.info("فرم کنترل کیفیت برای این قطعه هنوز ثبت نشده است.")
                         
-                # ۴. مالی
                 with tab4:
                     if not cost_df.empty:
                         cost_fmt = format_cost_df_view(cost_df)
@@ -1465,7 +1435,6 @@ else:
                     else:
                         st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
                 
-                # ساخت فایل فرم‌محور جامع قطعه
                 dossier_sections = {
                     "۱- مشخصات و شناسنامه فرآیند تولید قطعه": [
                         ("کد قطعه", search_code),
@@ -1526,7 +1495,7 @@ else:
 
                 excel_dossier_bytes = build_form_layout_excel(dossier_sections, title=f"شناسنامه پرونده جامع قطعه {search_code}")
                 st.download_button(
-                    label=f"📥 دانلود خروجی اکسل پرونده جامع قطعه {search_code} (چندسطره و فرم‌محور)",
+                    label="📥 دانلود خروجی اکسل",
                     data=excel_dossier_bytes,
                     file_name=f"part_dossier_form_{search_code}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1592,7 +1561,7 @@ else:
             st.markdown("---")
             combined_excel_file = export_to_styled_excel_multisheet(multisheet_export_dict, "archive_export.xlsx")
             st.download_button(
-                label=f"📥 دانلود فایل اکسل جامع ({len(selected_table_labels)} جدول انتخاب شده با تاریخ شمسی)",
+                label="📥 دانلود خروجی اکسل",
                 data=combined_excel_file,
                 file_name="selected_tables_archive.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
