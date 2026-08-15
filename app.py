@@ -17,7 +17,10 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- توابع تبدیل و فرمت‌بندی ساعت و تاریخ ---
+# =========================================================
+# ۱. توابع عمومی، پردازشی و تبدیل تاریخ و زمان (Top-Level)
+# =========================================================
+
 def time_to_hours(t_val):
     if isinstance(t_val, time):
         return t_val.hour + (t_val.minute / 60.0)
@@ -85,6 +88,269 @@ def format_jalali_date(date_str):
             except Exception:
                 return date_clean
     return date_clean
+
+def flatten_powder_df(df):
+    if df.empty:
+        return df
+    records = []
+    for _, row in df.iterrows():
+        r_dict = {
+            'شماره ظرف پودر': row.get('powder_code', ''),
+            'جنس / نوع متریال پودر': row.get('material', ''),
+            'وزن پودر (گرم)': row.get('weight_g', 0.0),
+            'تاریخ ثبت (شمسی)': format_jalali_date(row.get('date', ''))
+        }
+        raw_json = row.get('checklist_json', '')
+        if raw_json:
+            try:
+                chk = json.loads(raw_json)
+                for test_name, test_val in chk.items():
+                    if isinstance(test_val, dict):
+                        r_dict[f"{test_name} (وضعیت)"] = test_val.get('status', '')
+                        r_dict[f"{test_name} (ملاحظات)"] = test_val.get('note', '')
+                    else:
+                        r_dict[f"{test_name}"] = str(test_val)
+            except Exception:
+                pass
+        records.append(r_dict)
+    return pd.DataFrame(records)
+
+def flatten_qc_df(df):
+    if df.empty:
+        return df
+    records = []
+    for _, row in df.iterrows():
+        r_dict = {
+            'کد/شناسه قطعه': row.get('part_code', ''),
+            'نام قطعه': row.get('part_name', ''),
+            'شماره ظرف پودر مصرفی': row.get('material', ''),
+            'مدل دستگاه': row.get('machine_model', ''),
+            'تاریخ ثبت بازرسی (شمسی)': format_jalali_date(row.get('date', '')),
+            'بازرس کنترل کیفیت': row.get('qc_inspector', ''),
+            'مسئول مهندسی کیفیت': row.get('qc_engineer', ''),
+            'مدیر تضمین کیفیت': row.get('qa_manager', '')
+        }
+        raw_json = row.get('qc_checks_json', '')
+        if raw_json:
+            try:
+                chk = json.loads(raw_json)
+                for test_name, test_val in chk.items():
+                    if isinstance(test_val, dict):
+                        r_dict[f"{test_name} - نتیجه"] = test_val.get('result', '')
+                        r_dict[f"{test_name} - ملاحظات"] = test_val.get('note', '')
+                    else:
+                        r_dict[f"{test_name}"] = str(test_val)
+            except Exception:
+                pass
+        records.append(r_dict)
+    return pd.DataFrame(records)
+
+def format_production_df_view(df):
+    if df.empty:
+        return df
+    df_copy = df.copy()
+    date_cols = ['date', 'start_date', 'end_date', 'delivery_date']
+    for col in date_cols:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].apply(format_jalali_date)
+    
+    time_cols = ['build_time_hrs', 'downtime_hrs', 'setup_time_hrs', 'cleaning_time_hrs']
+    for col in time_cols:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].apply(hours_to_time_str)
+            
+    return df_copy
+
+def format_cost_df_view(df):
+    if df.empty:
+        return df
+    df_copy = df.copy()
+    time_cols = ['print_time_hrs', 'design_time_hrs', 'post_process_time_hrs']
+    for col in time_cols:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].apply(hours_to_time_str)
+    return df_copy
+
+# --- موتور پیشرفته تولید اکسل فرم‌محور و چندبرگه ---
+def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی سامانه SLM"):
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = title[:30]
+    ws.sheet_view.rightToLeft = True
+
+    title_font = Font(name='B Nazanin', size=15, bold=True, color='FFFFFF')
+    title_fill = PatternFill(start_color='0F172A', end_color='0F172A', fill_type='solid')
+    
+    sec_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
+    sec_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
+    
+    hdr_font = Font(name='B Nazanin', size=11, bold=True, color='FFFFFF')
+    hdr_fill = PatternFill(start_color='334155', end_color='334155', fill_type='solid')
+
+    lbl_font = Font(name='B Nazanin', size=11, bold=True, color='1E293B')
+    lbl_fill = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid')
+
+    val_font = Font(name='B Nazanin', size=11, color='0F172A')
+    
+    thin_border = Border(
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
+    )
+
+    ws.merge_cells('A1:F1')
+    c_title = ws['A1']
+    c_title.value = title
+    c_title.font = title_font
+    c_title.fill = title_fill
+    c_title.alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[1].height = 35
+
+    curr_row = 3
+
+    for sec_title, sec_content in sections_dict.items():
+        ws.merge_cells(start_row=curr_row, start_column=1, end_row=curr_row, end_column=6)
+        c_sec = ws.cell(row=curr_row, column=1, value=sec_title)
+        c_sec.font = sec_font
+        c_sec.fill = sec_fill
+        c_sec.alignment = Alignment(horizontal='right', vertical='center')
+        ws.row_dimensions[curr_row].height = 28
+        curr_row += 1
+
+        if isinstance(sec_content, list) and len(sec_content) > 0 and isinstance(sec_content[0], tuple):
+            pairs = sec_content
+            for i in range(0, len(pairs), 2):
+                ws.row_dimensions[curr_row].height = 24
+                l1, v1 = pairs[i]
+                c_l1 = ws.cell(row=curr_row, column=1, value=str(l1))
+                c_l1.font = lbl_font; c_l1.fill = lbl_fill; c_l1.alignment = Alignment(horizontal='right', vertical='center'); c_l1.border = thin_border
+
+                ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
+                c_v1 = ws.cell(row=curr_row, column=2, value=str(v1))
+                c_v1.font = val_font; c_v1.alignment = Alignment(horizontal='right', vertical='center'); c_v1.border = thin_border
+                ws.cell(row=curr_row, column=3).border = thin_border
+
+                if i + 1 < len(pairs):
+                    l2, v2 = pairs[i+1]
+                    c_l2 = ws.cell(row=curr_row, column=4, value=str(l2))
+                    c_l2.font = lbl_font; c_l2.fill = lbl_fill; c_l2.alignment = Alignment(horizontal='right', vertical='center'); c_l2.border = thin_border
+
+                    ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
+                    c_v2 = ws.cell(row=curr_row, column=5, value=str(v2))
+                    c_v2.font = val_font; c_v2.alignment = Alignment(horizontal='right', vertical='center'); c_v2.border = thin_border
+                    ws.cell(row=curr_row, column=6).border = thin_border
+                else:
+                    ws.merge_cells(start_row=curr_row, start_column=4, end_row=curr_row, end_column=6)
+
+                curr_row += 1
+
+        elif isinstance(sec_content, dict):
+            ws.row_dimensions[curr_row].height = 24
+            
+            c_h1 = ws.cell(row=curr_row, column=1, value="ردیف")
+            c_h1.font = hdr_font; c_h1.fill = hdr_fill; c_h1.alignment = Alignment(horizontal='center', vertical='center'); c_h1.border = thin_border
+            
+            ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
+            c_h2 = ws.cell(row=curr_row, column=2, value="عنوان آزمون / پارامتر کیفی")
+            c_h2.font = hdr_font; c_h2.fill = hdr_fill; c_h2.alignment = Alignment(horizontal='right', vertical='center'); c_h2.border = thin_border
+            ws.cell(row=curr_row, column=3).border = thin_border
+            
+            c_h3 = ws.cell(row=curr_row, column=4, value="وضعیت / نتیجه")
+            c_h3.font = hdr_font; c_h3.fill = hdr_fill; c_h3.alignment = Alignment(horizontal='center', vertical='center'); c_h3.border = thin_border
+            
+            ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
+            c_h4 = ws.cell(row=curr_row, column=5, value="ملاحظات و توضیحات")
+            c_h4.font = hdr_font; c_h4.fill = hdr_fill; c_h4.alignment = Alignment(horizontal='right', vertical='center'); c_h4.border = thin_border
+            ws.cell(row=curr_row, column=6).border = thin_border
+
+            curr_row += 1
+            
+            idx = 1
+            for test_name, test_data in sec_content.items():
+                ws.row_dimensions[curr_row].height = 22
+                status_val = test_data.get('status', test_data.get('result', '')) if isinstance(test_data, dict) else str(test_data)
+                note_val = test_data.get('note', '') if isinstance(test_data, dict) else ''
+
+                c_idx = ws.cell(row=curr_row, column=1, value=idx)
+                c_idx.font = val_font; c_idx.alignment = Alignment(horizontal='center', vertical='center'); c_idx.border = thin_border
+                
+                ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
+                c_tn = ws.cell(row=curr_row, column=2, value=test_name)
+                c_tn.font = val_font; c_tn.alignment = Alignment(horizontal='right', vertical='center'); c_tn.border = thin_border
+                ws.cell(row=curr_row, column=3).border = thin_border
+                
+                c_st = ws.cell(row=curr_row, column=4, value=status_val)
+                c_st.font = val_font; c_st.alignment = Alignment(horizontal='center', vertical='center'); c_st.border = thin_border
+                
+                ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
+                c_nt = ws.cell(row=curr_row, column=5, value=note_val)
+                c_nt.font = val_font; c_nt.alignment = Alignment(horizontal='right', vertical='center'); c_nt.border = thin_border
+                ws.cell(row=curr_row, column=6).border = thin_border
+
+                curr_row += 1
+                idx += 1
+
+        curr_row += 1
+
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 22
+    ws.column_dimensions['C'].width = 20
+    ws.column_dimensions['D'].width = 18
+    ws.column_dimensions['E'].width = 25
+    ws.column_dimensions['F'].width = 25
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        for sheet_name, df in dict_of_dfs.items():
+            if df.empty:
+                df = pd.DataFrame(["اطلاعاتی ثبت نشده است"], columns=["وضعیت"])
+            
+            clean_sheet_name = sheet_name[:30].replace(":", "").replace("?", "").replace("*", "").replace("/", "").replace("\\", "")
+            df.to_excel(writer, index=False, sheet_name=clean_sheet_name)
+            worksheet = writer.sheets[clean_sheet_name]
+
+            worksheet.sheet_view.rightToLeft = True
+
+            header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
+            header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
+            data_font = Font(name='B Nazanin', size=11)
+            align_right = Alignment(horizontal='right', vertical='center', wrap_text=True)
+            
+            thin_border = Border(
+                left=Side(style='thin', color='CBD5E1'),
+                right=Side(style='thin', color='CBD5E1'),
+                top=Side(style='thin', color='CBD5E1'),
+                bottom=Side(style='thin', color='CBD5E1')
+            )
+
+            for col_num, col_name in enumerate(df.columns, 1):
+                cell = worksheet.cell(row=1, column=col_num)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.border = thin_border
+
+            for row_num in range(2, len(df) + 2):
+                for col_num in range(1, len(df.columns) + 1):
+                    cell = worksheet.cell(row=row_num, column=col_num)
+                    cell.font = data_font
+                    cell.alignment = align_right
+                    cell.border = thin_border
+
+            for col in worksheet.columns:
+                max_len = max(len(str(cell.value or '')) for cell in col)
+                col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                worksheet.column_dimensions[col_letter].width = max(max_len + 5, 16)
+
+    output.seek(0)
+    return output
 
 # --- استایل تمیز و راست‌چین CSS ---
 st.markdown("""
@@ -227,139 +493,66 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- موتور پیشرفته تولید اکسل فرم‌محور ---
-def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی سامانه SLM"):
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = title[:30]
-    ws.sheet_view.rightToLeft = True
-
-    title_font = Font(name='B Nazanin', size=15, bold=True, color='FFFFFF')
-    title_fill = PatternFill(start_color='0F172A', end_color='0F172A', fill_type='solid')
-    
-    sec_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
-    sec_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
-    
-    hdr_font = Font(name='B Nazanin', size=11, bold=True, color='FFFFFF')
-    hdr_fill = PatternFill(start_color='334155', end_color='334155', fill_type='solid')
-
-    lbl_font = Font(name='B Nazanin', size=11, bold=True, color='1E293B')
-    lbl_fill = PatternFill(start_color='F1F5F9', end_color='F1F5F9', fill_type='solid')
-
-    val_font = Font(name='B Nazanin', size=11, color='0F172A')
-    
-    thin_border = Border(
-        left=Side(style='thin', color='CBD5E1'),
-        right=Side(style='thin', color='CBD5E1'),
-        top=Side(style='thin', color='CBD5E1'),
-        bottom=Side(style='thin', color='CBD5E1')
-    )
-
-    ws.merge_cells('A1:F1')
-    c_title = ws['A1']
-    c_title.value = title
-    c_title.font = title_font
-    c_title.fill = title_fill
-    c_title.alignment = Alignment(horizontal='center', vertical='center')
-    ws.row_dimensions[1].height = 35
-
-    curr_row = 3
-
-    for sec_title, sec_content in sections_dict.items():
-        ws.merge_cells(start_row=curr_row, start_column=1, end_row=curr_row, end_column=6)
-        c_sec = ws.cell(row=curr_row, column=1, value=sec_title)
-        c_sec.font = sec_font
-        c_sec.fill = sec_fill
-        c_sec.alignment = Alignment(horizontal='right', vertical='center')
-        ws.row_dimensions[curr_row].height = 28
-        curr_row += 1
-
-        if isinstance(sec_content, list) and len(sec_content) > 0 and isinstance(sec_content[0], tuple):
-            pairs = sec_content
-            for i in range(0, len(pairs), 2):
-                ws.row_dimensions[curr_row].height = 24
-                l1, v1 = pairs[i]
-                c_l1 = ws.cell(row=curr_row, column=1, value=str(l1))
-                c_l1.font = lbl_font; c_l1.fill = lbl_fill; c_l1.alignment = Alignment(horizontal='right', vertical='center'); c_l1.border = thin_border
-
-                ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
-                c_v1 = ws.cell(row=curr_row, column=2, value=str(v1))
-                c_v1.font = val_font; c_v1.alignment = Alignment(horizontal='right', vertical='center'); c_v1.border = thin_border
-                ws.cell(row=curr_row, column=3).border = thin_border
-
-                if i + 1 < len(pairs):
-                    l2, v2 = pairs[i+1]
-                    c_l2 = ws.cell(row=curr_row, column=4, value=str(l2))
-                    c_l2.font = lbl_font; c_l2.fill = lbl_fill; c_l2.alignment = Alignment(horizontal='right', vertical='center'); c_l2.border = thin_border
-
-                    ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
-                    c_v2 = ws.cell(row=curr_row, column=5, value=str(v2))
-                    c_v2.font = val_font; c_v2.alignment = Alignment(horizontal='right', vertical='center'); c_v2.border = thin_border
-                    ws.cell(row=curr_row, column=6).border = thin_border
-                else:
-                    ws.merge_cells(start_row=curr_row, start_column=4, end_row=curr_row, end_column=6)
-
-                curr_row += 1
-
-        elif isinstance(sec_content, dict):
-            ws.row_dimensions[curr_row].height = 24
-            
-            c_h1 = ws.cell(row=curr_row, column=1, value="ردیف")
-            c_h1.font = hdr_font; c_h1.fill = hdr_fill; c_h1.alignment = Alignment(horizontal='center', vertical='center'); c_h1.border = thin_border
-            
-            ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
-            c_h2 = ws.cell(row=curr_row, column=2, value="عنوان آزمون / پارامتر کیفی")
-            c_h2.font = hdr_font; c_h2.fill = hdr_fill; c_h2.alignment = Alignment(horizontal='right', vertical='center'); c_h2.border = thin_border
-            ws.cell(row=curr_row, column=3).border = thin_border
-            
-            c_h3 = ws.cell(row=curr_row, column=4, value="وضعیت / نتیجه")
-            c_h3.font = hdr_font; c_h3.fill = hdr_fill; c_h3.alignment = Alignment(horizontal='center', vertical='center'); c_h3.border = thin_border
-            
-            ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
-            c_h4 = ws.cell(row=curr_row, column=5, value="ملاحظات و توضیحات")
-            c_h4.font = hdr_font; c_h4.fill = hdr_fill; c_h4.alignment = Alignment(horizontal='right', vertical='center'); c_h4.border = thin_border
-            ws.cell(row=curr_row, column=6).border = thin_border
-
-            curr_row += 1
-            
-            idx = 1
-            for test_name, test_data in sec_content.items():
-                ws.row_dimensions[curr_row].height = 22
-                status_val = test_data.get('status', test_data.get('result', '')) if isinstance(test_data, dict) else str(test_data)
-                note_val = test_data.get('note', '') if isinstance(test_data, dict) else ''
-
-                c_idx = ws.cell(row=curr_row, column=1, value=idx)
-                c_idx.font = val_font; c_idx.alignment = Alignment(horizontal='center', vertical='center'); c_idx.border = thin_border
-                
-                ws.merge_cells(start_row=curr_row, start_column=2, end_row=curr_row, end_column=3)
-                c_tn = ws.cell(row=curr_row, column=2, value=test_name)
-                c_tn.font = val_font; c_tn.alignment = Alignment(horizontal='right', vertical='center'); c_tn.border = thin_border
-                ws.cell(row=curr_row, column=3).border = thin_border
-                
-                c_st = ws.cell(row=curr_row, column=4, value=status_val)
-                c_st.font = val_font; c_st.alignment = Alignment(horizontal='center', vertical='center'); c_st.border = thin_border
-                
-                ws.merge_cells(start_row=curr_row, start_column=5, end_row=curr_row, end_column=6)
-                c_nt = ws.cell(row=curr_row, column=5, value=note_val)
-                c_nt.font = val_font; c_nt.alignment = Alignment(horizontal='right', vertical='center'); c_nt.border = thin_border
-                ws.cell(row=curr_row, column=6).border = thin_border
-
-                curr_row += 1
-                idx += 1
-
-        curr_row += 1
-
-    ws.column_dimensions['A'].width = 8
-    ws.column_dimensions['B'].width = 22
-    ws.column_dimensions['C'].width = 20
-    ws.column_dimensions['D'].width = 18
-    ws.column_dimensions['E'].width = 25
-    ws.column_dimensions['F'].width = 25
-
-    output = io.BytesIO()
-    wb.save(output)
-    output.seek(0)
-    return output
+FARSI_HEADERS_MAP = {
+    'powder_code': 'شماره ظرف پودر',
+    'material': 'جنس / نوع متریال پودر',
+    'weight_g': 'وزن پودر (گرم)',
+    'date': 'تاریخ ثبت (شمسی)',
+    'id': 'شناسه',
+    'recycled_batch_code': 'کد پارت بازیافت',
+    'input_powder_g': 'پودر ورودی به دستگاه (گرم)',
+    'unrecyclable_powder_g': 'پودر غیرقابل بازیافت (گرم)',
+    'recycled_powder_g': 'پودر بازیافتی قابل استفاده (گرم)',
+    'notes': 'توضیحات و ملاحظات',
+    'part_code': 'کد/شناسه قطعه',
+    'part_name': 'نام قطعه',
+    'quantity': 'تعداد روی صفحه',
+    'machine_model': 'مدل دستگاه',
+    'build_time_hrs': 'زمان تولید (ساعت:دقیقه)',
+    'downtime_hrs': 'زمان توقف (ساعت:دقیقه)',
+    'start_date': 'تاریخ شروع (شمسی)',
+    'start_time': 'ساعت شروع',
+    'end_date': 'تاریخ پایان (شمسی)',
+    'end_time': 'ساعت پایان',
+    'setup_time_hrs': 'زمان آماده‌سازی (ساعت:دقیقه)',
+    'cleaning_time_hrs': 'زمان تمیزکاری (ساعت:دقیقه)',
+    'waste_powder_g': 'پودر غیرقابل بازیافت (گرم)',
+    'part_with_support_g': 'وزن با ساپورت (گرم)',
+    'final_part_g': 'وزن قطعه نهایی (گرم)',
+    'filter_percentage': 'درصد فیلتر دستگاه (%)',
+    'build_plate_code': 'کد صفحه ساخت',
+    'build_plate_init_wt_g': 'وزن اولیه صفحه ساخت (گرم)',
+    'build_plate_post_wt_g': 'وزن صفحه ساخت بعد پرداخت (گرم)',
+    'engraving_qty': 'تعداد حکاکی لیزر',
+    'delivery_date': 'تاریخ تحویل (شمسی)',
+    'qc_inspector': 'بازرس کنترل کیفیت',
+    'qc_engineer': 'مسئول مهندسی کیفیت',
+    'qa_manager': 'مدیر تضمین کیفیت',
+    'powder_type': 'نوع پودر فلزی',
+    'volume_cm3': 'حجم قطعه (cm3)',
+    'net_weight_g': 'وزن خالص (گرم)',
+    'support_volume_cm3': 'حجم ساپورت (cm3)',
+    'support_weight_g': 'وزن ساپورت (گرم)',
+    'machine_type': 'نوع دستگاه',
+    'parts_on_plate': 'تعداد قطعات روی صفحه',
+    'print_time_hrs': 'زمان چاپ (ساعت:دقیقه)',
+    'design_time_hrs': 'زمان طراحی (ساعت:دقیقه)',
+    'post_process_time_hrs': 'زمان پرداخت (ساعت:دقیقه)',
+    'overhead_pct': 'ضریب سربار (%)',
+    'powder_cost_total': 'هزینه پودر (ریال)',
+    'argon_cost_total': 'هزینه گاز آرگون (ریال)',
+    'depreciation_cost_total': 'هزینه استهلاک دستگاه (ریال)',
+    'power_cost_total': 'هزینه برق (ریال)',
+    'engineering_cost_total': 'هزینه طراحی/مهندسی (ریال)',
+    'operator_cost_total': 'هزینه اپراتور (ریال)',
+    'post_process_cost_total': 'هزینه پرداخت‌کاری (ریال)',
+    'qc_cost_total': 'هزینه کنترل کیفیت (ریال)',
+    'utility_ventilation': 'هزینه تهویه (ریال)',
+    'utility_chiller': 'هزینه چیلر (ریال)',
+    'total_production_cost': 'بهای تمام شده کل (ریال)',
+    'overhead_cost': 'مبلغ سربار (ریال)',
+    'final_price': 'قیمت نهایی قابل ارائه به مشتری (ریال)'
+}
 
 DB_NAME = "slm_management.db"
 
@@ -1130,10 +1323,12 @@ else:
                 def_pwd_type = c_row['powder_type']
                 st.info("⚠️ محاسبات مالی قبلی این قطعه لود شد و می‌توانید آن‌ها را تغییر دهید.")
             else:
-                p_row = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_part,)).iloc[0]
-                def_part_name = p_row['part_name']
-                def_machine = p_row['machine_model'] if p_row['machine_model'] in ["M120", "M300"] else "M300"
-                def_print_time_str = hours_to_time_str(p_row['build_time_hrs'])
+                p_row = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_part,))
+                if not p_row.empty:
+                    p_info = p_row.iloc[0]
+                    def_part_name = p_info['part_name']
+                    def_machine = p_info['machine_model'] if p_info['machine_model'] in ["M120", "M300"] else "M300"
+                    def_print_time_str = hours_to_time_str(p_info['build_time_hrs'])
 
         st.subheader("📥 مشخصات فنی و ورودی‌های قطعه")
         c1, c2, c3 = st.columns(3)
@@ -1366,7 +1561,7 @@ else:
             )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل
+    # ۶. بایگانی و گزارش‌گیری اکسل (پرونده جامع فرم‌محور)
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
