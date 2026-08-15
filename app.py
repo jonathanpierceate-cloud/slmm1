@@ -772,7 +772,8 @@ else:
         total_recycled_g = f_recycled['recycled_powder_g'].sum() if not f_recycled.empty else 0.0
         total_used_g = f_recycled['input_powder_g'].sum() if not f_recycled.empty else 0.0
         
-        total_diff_waste_g = total_recycled_g - total_used_g
+        # اعمال قدرمطلق (abs) برای جلوگیری از نمایش علامت منفی در کارت چهارم
+        total_diff_waste_g = abs(total_recycled_g - total_used_g)
 
         sc1, sc2, sc3, sc4 = st.columns(4)
         sc1.metric("کل پودر خریداری‌شده", f"{total_bought_g:,.0f} گرم")
