@@ -3,7 +3,7 @@ import pandas as pd
 import sqlite3
 import json
 import hashlib
-from datetime import datetime
+from datetime import datetime, time
 import os
 import io
 import openpyxl
@@ -17,7 +17,35 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- تابع استاندارد و دقیق تبدیل تاریخ میلادی به هجری شمسی ---
+# --- توابع تبدیل و فرمت‌بندی ساعت و تاریخ ---
+def time_to_hours(t_val):
+    """تبدیل فرمت زمان یا رشته HH:MM به مقدار اعشاری ساعت"""
+    if isinstance(t_val, time):
+        return t_val.hour + (t_val.minute / 60.0)
+    elif isinstance(t_val, str) and ":" in t_val:
+        try:
+            parts = t_val.strip().split(":")
+            return int(parts[0]) + (int(parts[1]) / 60.0)
+        except Exception:
+            return 0.0
+    try:
+        return float(t_val)
+    except Exception:
+        return 0.0
+
+def hours_to_time_str(hrs):
+    """تبدیل عدد اعشاری ساعت به فرمت ساعت و دقیقه HH:MM"""
+    try:
+        hrs_float = float(hrs)
+        h = int(hrs_float)
+        m = int(round((hrs_float - h) * 60))
+        if m == 60:
+            h += 1
+            m = 0
+        return f"{h:02d}:{m:02d}"
+    except Exception:
+        return "00:00"
+
 def gregorian_to_jalali(gy, gm, gd):
     g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
     if gy > 1600:
@@ -60,7 +88,7 @@ def format_jalali_date(date_str):
                 return date_clean
     return date_clean
 
-# --- استایل تمیز و راست‌چین CSS با حذف کامل متون راهنمای مزاحم ---
+# --- استایل تمیز و راست‌چین CSS با حذف کامل متون راهنمای مزاحم و لینک‌های هدر ---
 st.markdown("""
 <style>
     @font-face {
@@ -88,6 +116,12 @@ st.markdown("""
         margin: 0px !important;
         padding: 0px !important;
         pointer-events: none !important;
+    }
+
+    [data-testid="stHeaderActionElements"],
+    .header-anchor,
+    a[href^="#"] {
+        display: none !important;
     }
 
     [data-testid="stMainBlockContainer"],
@@ -195,7 +229,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- توابع کمکی جهت استخراج کامل چک‌لیست‌ها و تاریخ‌های شمسی در جدول و اکسل ---
+# --- توابع کمکی جهت استخراج کامل داده‌ها با فرمت ساعت و تاریخ شمسی ---
 def flatten_powder_df(df):
     if df.empty:
         return df
@@ -205,7 +239,7 @@ def flatten_powder_df(df):
             'شماره ظرف پودر': row.get('powder_code', ''),
             'جنس / نوع متریال پودر': row.get('material', ''),
             'وزن پودر (گرم)': row.get('weight_g', 0.0),
-            'تاریخ ثبت': format_jalali_date(row.get('date', ''))
+            'تاریخ ثبت (شمسی)': format_jalali_date(row.get('date', ''))
         }
         raw_json = row.get('checklist_json', '')
         if raw_json:
@@ -232,7 +266,7 @@ def flatten_qc_df(df):
             'نام قطعه': row.get('part_name', ''),
             'شماره ظرف پودر مصرفی': row.get('material', ''),
             'مدل دستگاه': row.get('machine_model', ''),
-            'تاریخ ثبت بازرسی': format_jalali_date(row.get('date', '')),
+            'تاریخ ثبت بازرسی (شمسی)': format_jalali_date(row.get('date', '')),
             'بازرس کنترل کیفیت': row.get('qc_inspector', ''),
             'مسئول مهندسی کیفیت': row.get('qc_engineer', ''),
             'مدیر تضمین کیفیت': row.get('qa_manager', '')
@@ -252,7 +286,7 @@ def flatten_qc_df(df):
         records.append(r_dict)
     return pd.DataFrame(records)
 
-def format_production_dates(df):
+def format_production_df_view(df):
     if df.empty:
         return df
     df_copy = df.copy()
@@ -260,6 +294,22 @@ def format_production_dates(df):
     for col in date_cols:
         if col in df_copy.columns:
             df_copy[col] = df_copy[col].apply(format_jalali_date)
+    
+    time_cols = ['build_time_hrs', 'downtime_hrs', 'setup_time_hrs', 'cleaning_time_hrs']
+    for col in time_cols:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].apply(hours_to_time_str)
+            
+    return df_copy
+
+def format_cost_df_view(df):
+    if df.empty:
+        return df
+    df_copy = df.copy()
+    time_cols = ['print_time_hrs', 'design_time_hrs', 'post_process_time_hrs']
+    for col in time_cols:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].apply(hours_to_time_str)
     return df_copy
 
 # --- تابع عمومی ساخت فایل اکسل کاملاً راست‌چین و شکیل ---
@@ -328,14 +378,14 @@ FARSI_HEADERS_MAP = {
     'part_name': 'نام قطعه',
     'quantity': 'تعداد روی صفحه',
     'machine_model': 'مدل دستگاه',
-    'build_time_hrs': 'زمان تولید (ساعت)',
-    'downtime_hrs': 'زمان توقف (ساعت)',
+    'build_time_hrs': 'زمان تولید (ساعت:دقیقه)',
+    'downtime_hrs': 'زمان توقف (ساعت:دقیقه)',
     'start_date': 'تاریخ شروع (شمسی)',
     'start_time': 'ساعت شروع',
     'end_date': 'تاریخ پایان (شمسی)',
     'end_time': 'ساعت پایان',
-    'setup_time_hrs': 'زمان آماده‌سازی (ساعت)',
-    'cleaning_time_hrs': 'زمان تمیزکاری (ساعت)',
+    'setup_time_hrs': 'زمان آماده‌سازی (ساعت:دقیقه)',
+    'cleaning_time_hrs': 'زمان تمیزکاری (ساعت:دقیقه)',
     'waste_powder_g': 'پودر غیرقابل بازیافت (گرم)',
     'part_with_support_g': 'وزن با ساپورت (گرم)',
     'final_part_g': 'وزن قطعه نهایی (گرم)',
@@ -355,9 +405,9 @@ FARSI_HEADERS_MAP = {
     'support_weight_g': 'وزن ساپورت (گرم)',
     'machine_type': 'نوع دستگاه',
     'parts_on_plate': 'تعداد قطعات روی صفحه',
-    'print_time_hrs': 'زمان چاپ (ساعت)',
-    'design_time_hrs': 'زمان طراحی (ساعت)',
-    'post_process_time_hrs': 'زمان پرداخت (ساعت)',
+    'print_time_hrs': 'زمان چاپ (ساعت:دقیقه)',
+    'design_time_hrs': 'زمان طراحی (ساعت:دقیقه)',
+    'post_process_time_hrs': 'زمان پرداخت (ساعت:دقیقه)',
     'overhead_pct': 'ضریب سربار (%)',
     'powder_cost_total': 'هزینه پودر (ریال)',
     'argon_cost_total': 'هزینه گاز آرگون (ریال)',
@@ -676,17 +726,17 @@ else:
         st.subheader("راهنمای گردش کار")
         st.markdown(f"""
         1. **📦 پودر** — ثبت و ویرایش ظروف پودر خریداری شده اولیه، بازیافتی یا پودرهای نورا با تاریخ شمسی و ذخیره کامل نوت‌ها.
-        2. **🏭 فرم تولید** — تعریف «کد قطعه» و اتصال آن به «کد ظرف پودر» و ثبت زمان‌ها و تاریخ‌های شمسی فرآیند.
+        2. **🏭 فرم تولید** — تعریف «کد قطعه» و اتصال آن به «کد ظرف پودر» و ثبت زمان‌ها با فرمت ساعت (HH:MM) و تاریخ‌های شمسی فرآیند.
         3. **❇️ کنترل کیفیت (QC)** — ثبت و ویرایش نتایج تست‌های کیفی و یادداشت‌ها با تاریخ هجری شمسی.
-        4. **💰 محاسبه‌گر هزینه** — برآورد خودکار هزینه‌های تولید و قیمت فروش نهایی بر اساس آخرین نرخ‌های روز.
-        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه جامع قطعات و دریافت خروجی اکسل با تاریخ‌های شمسی.
+        4. **💰 محاسبه‌گر هزینه** — برآورد خودکار هزینه‌های تولید و قیمت فروش نهایی بر اساس زمان‌های ورودی و آخرین نرخ‌های روز.
+        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه جامع قطعات و دریافت خروجی اکسل چندبرگه با تاریخ‌های شمسی و فرمت ساعت.
         
         <br>
         <p style='color: #94a3b8; font-size: 1.1rem;'>امروز: {get_today_jalali()} | از منوی سمت راست بین صفحات جابه‌جا شوید.</p>
         """, unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # ۱. پودر (با تاریخ شمسی و استخراج کامل نوت‌ها)
+    # ۱. پودر
     # ---------------------------------------------------------
     elif choice == "📦 پودر":
         st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -955,10 +1005,10 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۲. فرم تولید (با تاریخ‌های شمسی)
+    # ۲. فرم تولید (با فرمت ساعت HH:MM برای تمامی زمان‌ها)
     # ---------------------------------------------------------
     elif choice == "🏭 فرم تولید":
-        st.header("🏭 فرم رکورد تولید (Production Form.xlsx)")
+        st.header("🏭 فرم رکورد تولید")
         
         conn = get_db_connection()
         powders_list = pd.read_sql_query("SELECT powder_code FROM powders", conn)['powder_code'].tolist()
@@ -999,19 +1049,25 @@ else:
                 date_str = st.text_input("تاریخ ساخت (هجری شمسی)", value=def_prod_dt)
                 
             st.markdown("---")
-            st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت")
+            st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت (فرمت ساعت:دقیقه مانند 08:30)")
             tc1, tc2, tc3 = st.columns(3)
             with tc1:
-                build_time_hrs = st.number_input("زمان تولید (ساعت)", min_value=0.0, value=float(edit_data.get("build_time_hrs", 0.0)))
-                downtime_hrs = st.number_input("زمان توقف حین ساخت (ساعت)", min_value=0.0, value=float(edit_data.get("downtime_hrs", 0.0)))
+                def_build_time_str = hours_to_time_str(edit_data.get("build_time_hrs", 10.0)) if mode == "ویرایش قطعه موجود" else "10:00"
+                build_time_input = st.text_input("زمان تولید (ساعت:دقیقه)", value=def_build_time_str)
+                
+                def_downtime_str = hours_to_time_str(edit_data.get("downtime_hrs", 0.0)) if mode == "ویرایش قطعه موجود" else "00:00"
+                downtime_input = st.text_input("زمان توقف حین ساخت (ساعت:دقیقه)", value=def_downtime_str)
             with tc2:
                 start_date = st.text_input("تاریخ شروع (هجری شمسی)", value=format_jalali_date(edit_data.get("start_date", date_str)))
-                start_time = st.text_input("ساعت شروع", value=edit_data.get("start_time", "08:00"))
+                start_time = st.text_input("ساعت شروع (مانند 08:00)", value=edit_data.get("start_time", "08:00"))
                 end_date = st.text_input("تاریخ پایان (هجری شمسی)", value=format_jalali_date(edit_data.get("end_date", date_str)))
-                end_time = st.text_input("ساعت پایان", value=edit_data.get("end_time", "16:00"))
+                end_time = st.text_input("ساعت پایان (مانند 16:00)", value=edit_data.get("end_time", "16:00"))
             with tc3:
-                setup_time_hrs = st.number_input("زمان آماده‌سازی دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("setup_time_hrs", 0.0)))
-                cleaning_time_hrs = st.number_input("زمان تمیزکاری دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("cleaning_time_hrs", 0.0)))
+                def_setup_str = hours_to_time_str(edit_data.get("setup_time_hrs", 1.0)) if mode == "ویرایش قطعه موجود" else "01:00"
+                setup_time_input = st.text_input("زمان آماده‌سازی دستگاه (ساعت:دقیقه)", value=def_setup_str)
+                
+                def_clean_str = hours_to_time_str(edit_data.get("cleaning_time_hrs", 0.75)) if mode == "ویرایش قطعه موجود" else "00:45"
+                cleaning_time_input = st.text_input("زمان تمیزکاری دستگاه (ساعت:دقیقه)", value=def_clean_str)
                 
             st.markdown("---")
             st.subheader("⚖️ ۲- پارامترهای متریال و وزن")
@@ -1033,6 +1089,11 @@ else:
                 if submitted:
                     target_code = default_part_code if mode == "ویرایش قطعه موجود" else part_code
                     if target_code:
+                        build_time_hrs_dec = time_to_hours(build_time_input)
+                        downtime_hrs_dec = time_to_hours(downtime_input)
+                        setup_time_hrs_dec = time_to_hours(setup_time_input)
+                        cleaning_time_hrs_dec = time_to_hours(cleaning_time_input)
+                        
                         c = conn.cursor()
                         c.execute("""INSERT OR REPLACE INTO production 
                             (part_code, part_name, powder_code, quantity, machine_model, date,
@@ -1042,8 +1103,8 @@ else:
                              build_plate_init_wt_g, build_plate_post_wt_g)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                             (target_code, part_name, powder_code, quantity, machine_model, date_str,
-                             build_time_hrs, downtime_hrs, start_date, start_time, end_date, end_time,
-                             setup_time_hrs, cleaning_time_hrs, input_powder_g, waste_powder_g,
+                             build_time_hrs_dec, downtime_hrs_dec, start_date, start_time, end_date, end_time,
+                             setup_time_hrs_dec, cleaning_time_hrs_dec, input_powder_g, waste_powder_g,
                              part_with_support_g, final_part_g, filter_pct, plate_code,
                              plate_init_wt, plate_post_wt))
                         conn.commit()
@@ -1053,7 +1114,7 @@ else:
                         st.error("لطفاً کد قطعه را مشخص کنید.")
             with p_btn2:
                 prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
-                prod_formatted_df = format_production_dates(prod_all_df)
+                prod_formatted_df = format_production_df_view(prod_all_df)
                 clean_prod_df = prod_formatted_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP) if not prod_formatted_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                 excel_file_prod = export_to_styled_excel(clean_prod_df, "رکوردهای تولید")
                 st.download_button(
@@ -1065,10 +1126,10 @@ else:
                 )
                         
         st.markdown("---")
-        st.subheader("📂 جدول تمامی رکوردهای تولید قبلی (با تاریخ شمسی)")
+        st.subheader("📂 جدول تمامی رکوردهای تولید قبلی (با تاریخ شمسی و زمان ساعت:دقیقه)")
         prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
         if not prod_all_df.empty:
-            prod_formatted_df = format_production_dates(prod_all_df)
+            prod_formatted_df = format_production_df_view(prod_all_df)
             clean_prod_df = prod_formatted_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_prod_df)
         else:
@@ -1080,7 +1141,7 @@ else:
     # ۳. کنترل کیفیت
     # ---------------------------------------------------------
     elif choice == "❇️ کنترل کیفیت":
-        st.header("🔬 فرم کنترل کیفیت (QC.xlsx)")
+        st.header("🔬 فرم کنترل کیفیت")
         
         conn = get_db_connection()
         parts_list = pd.read_sql_query("SELECT part_code, part_name FROM production", conn)
@@ -1185,10 +1246,10 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۴. محاسبه‌گر هزینه
+    # ۴. محاسبه‌گر هزینه (با فرمت ساعت HH:MM برای زمان‌ها)
     # ---------------------------------------------------------
     elif choice == "💰 محاسبه‌گر هزینه":
-        st.header("💰 محاسبه‌گر بهای تمام شده و قیمت فروش (Cost Calculator.xlsx)")
+        st.header("💰 محاسبه‌گر بهای تمام شده و قیمت فروش")
         
         SYSTEM_RATES = load_system_rates()
         
@@ -1228,12 +1289,12 @@ else:
         
         def_part_name = ""
         def_machine = "M300"
-        def_print_time = 10.0
+        def_print_time_str = "10:00"
         def_vol = 50.0
         def_sup_vol = 10.0
         def_parts_plate = 1
-        def_design_time = 2.0
-        def_post_time = 3.0
+        def_design_time_str = "02:00"
+        def_post_time_str = "03:00"
         def_overhead = 35.0
         def_pwd_type = "Steel 316"
         
@@ -1243,12 +1304,12 @@ else:
                 c_row = prev_cost_row.iloc[0]
                 def_part_name = c_row['part_name']
                 def_machine = c_row['machine_type']
-                def_print_time = float(c_row['print_time_hrs'])
+                def_print_time_str = hours_to_time_str(c_row['print_time_hrs'])
                 def_vol = float(c_row['volume_cm3'])
                 def_sup_vol = float(c_row['support_volume_cm3'])
                 def_parts_plate = int(c_row['parts_on_plate'])
-                def_design_time = float(c_row['design_time_hrs'])
-                def_post_time = float(c_row['post_process_time_hrs'])
+                def_design_time_str = hours_to_time_str(c_row['design_time_hrs'])
+                def_post_time_str = hours_to_time_str(c_row['post_process_time_hrs'])
                 def_overhead = float(c_row['overhead_pct'])
                 def_pwd_type = c_row['powder_type']
                 st.info("⚠️ محاسبات مالی قبلی این قطعه لود شد و می‌توانید آن‌ها را تغییر دهید.")
@@ -1256,7 +1317,7 @@ else:
                 p_row = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_part,)).iloc[0]
                 def_part_name = p_row['part_name']
                 def_machine = p_row['machine_model'] if p_row['machine_model'] in ["M120", "M300"] else "M300"
-                def_print_time = float(p_row['build_time_hrs']) if p_row['build_time_hrs'] else 10.0
+                def_print_time_str = hours_to_time_str(p_row['build_time_hrs'])
 
         st.subheader("📥 مشخصات فنی و ورودی‌های قطعه")
         c1, c2, c3 = st.columns(3)
@@ -1273,10 +1334,15 @@ else:
             machine_type = st.selectbox("نوع دستگاه", ["M120", "M300"], index=1 if def_machine=="M300" else 0)
         with c3:
             parts_on_plate = st.number_input("تعداد قطعات روی صفحه", min_value=1, value=def_parts_plate)
-            print_time_hrs = st.number_input("زمان کل چاپ (ساعت)", min_value=0.0, value=def_print_time)
-            design_time_hrs = st.number_input("زمان طراحی (ساعت)", min_value=0.0, value=def_design_time)
-            post_time_hrs = st.number_input("زمان پرداخت‌کاری (ساعت)", min_value=0.0, value=def_post_time)
+            print_time_input = st.text_input("زمان کل چاپ (ساعت:دقیقه)", value=def_print_time_str)
+            design_time_input = st.text_input("زمان طراحی (ساعت:دقیقه)", value=def_design_time_str)
+            post_time_input = st.text_input("زمان پرداخت‌کاری (ساعت:دقیقه)", value=def_post_time_str)
             overhead_pct = st.number_input("ضریب سربار (%)", min_value=0.0, value=def_overhead)
+
+        # تبدیل زمان‌های ورودی به ساعت اعشاری جهت محاسبات
+        print_time_hrs = time_to_hours(print_time_input)
+        design_time_hrs = time_to_hours(design_time_input)
+        post_time_hrs = time_to_hours(post_time_input)
 
         density = RATES["density"][powder_type]
         net_weight_g = vol_cm3 * density
@@ -1334,7 +1400,8 @@ else:
                     st.error("لطفاً شناسه قطعه را مشخص کنید.")
         with cost_btn2:
             cost_all_df = pd.read_sql_query("SELECT * FROM cost_calculator", conn)
-            clean_cost_df = cost_all_df.rename(columns=FARSI_HEADERS_MAP) if not cost_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+            cost_formatted_df = format_cost_df_view(cost_all_df)
+            clean_cost_df = cost_formatted_df.rename(columns=FARSI_HEADERS_MAP) if not cost_formatted_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
             excel_file_cost = export_to_styled_excel(clean_cost_df, "برآورد هزینه‌ها")
             st.download_button(
                 label="📥 دانلود خروجی اکسل کامل برآورد هزینه‌ها",
@@ -1345,10 +1412,11 @@ else:
             )
                 
         st.markdown("---")
-        st.subheader("📂 جدول تمامی محاسبات هزینه قبلی ثبت‌شده")
+        st.subheader("📂 جدول تمامی محاسبات هزینه قبلی ثبت‌شده (با فرمت ساعت:دقیقه)")
         cost_all_df = pd.read_sql_query("SELECT * FROM cost_calculator", conn)
         if not cost_all_df.empty:
-            clean_cost_df = cost_all_df.rename(columns=FARSI_HEADERS_MAP)
+            cost_formatted_df = format_cost_df_view(cost_all_df)
+            clean_cost_df = cost_formatted_df.rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_cost_df)
         else:
             st.info("هنوز هیچ برآورد هزینه‌ای ثبت نشده است.")
@@ -1448,7 +1516,7 @@ else:
             )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل (پیشرفته با تاریخ‌های شمسی و تفکیک نوت‌ها)
+    # ۶. بایگانی و گزارش‌گیری اکسل
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
@@ -1467,7 +1535,7 @@ else:
             cost_df = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(search_code,))
             
             if not prod_df.empty:
-                st.success(f"اطلاعات کامل پرونده قطعه {search_code} با تاریخ شمسی یافت شد.")
+                st.success(f"اطلاعات کامل پرونده قطعه {search_code} با تاریخ شمسی و زمان‌ها یافت شد.")
                 tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر مصرفی (با نوت‌ها)", "🔬 کنترل کیفیت QC (با نوت‌ها)", "💰 برآورد مالی"])
                 
                 sheet_dict_part = {}
@@ -1475,7 +1543,7 @@ else:
                 
                 with tab1:
                     st.subheader("مشخصات فنی و فرآیند ساخت")
-                    prod_fmt = format_production_dates(prod_df)
+                    prod_fmt = format_production_df_view(prod_df)
                     clean_prod = prod_fmt.drop(columns=[c for c in json_cols_to_drop if c in prod_fmt.columns], errors='ignore')
                     disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP)
                     st.table(disp_prod.T)
@@ -1505,7 +1573,8 @@ else:
                         
                 with tab4:
                     if not cost_df.empty:
-                        disp_cost = cost_df.rename(columns=FARSI_HEADERS_MAP)
+                        cost_fmt = format_cost_df_view(cost_df)
+                        disp_cost = cost_fmt.rename(columns=FARSI_HEADERS_MAP)
                         st.table(disp_cost.T)
                         st.metric("قیمت نهایی فروش (ریال)", f"{cost_df['final_price'].values[0]:,.0f}")
                         sheet_dict_part["برآورد مالی"] = disp_cost
@@ -1524,14 +1593,14 @@ else:
         st.markdown("---")
         
         # ۲. بخش مشاهده و خروجی چندانتخابی جداول دیتابیس
-        st.subheader("📂 مشاهده و دانلود چندانتخابی جداول پایگاه داده (همراه با تاریخ‌های شمسی و نوت‌ها)")
+        st.subheader("📂 مشاهده و دانلود چندانتخابی جداول پایگاه داده")
         
         table_options_map = {
-            "آنالیز پودر اولیه (با نوت‌ها)": "powders",
+            "آنالیز پودر اولیه": "powders",
             "پودرهای بازیافت شده": "recycled_powders",
             "پودرهای خریداری شده از نورا": "nora_powders",
             "رکوردهای تولید": "production",
-            "کنترل کیفیت QC (با تمام نوت‌ها و تست‌ها)": "qc",
+            "کنترل کیفیت QC": "qc",
             "محاسبه هزینه و مالی": "cost_calculator"
         }
         
@@ -1554,8 +1623,12 @@ else:
                 elif tbl_name == "qc":
                     farsi_df = flatten_qc_df(raw_df)
                 elif tbl_name == "production":
-                    prod_fmt = format_production_dates(raw_df)
+                    prod_fmt = format_production_df_view(raw_df)
                     clean_df = prod_fmt.drop(columns=[col for col in json_cols_to_drop if col in prod_fmt.columns], errors='ignore')
+                    farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
+                elif tbl_name == "cost_calculator":
+                    cost_fmt = format_cost_df_view(raw_df)
+                    clean_df = cost_fmt.drop(columns=[col for col in json_cols_to_drop if col in cost_fmt.columns], errors='ignore')
                     farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
                 elif tbl_name in ["recycled_powders", "nora_powders"]:
                     raw_copy = raw_df.copy()
@@ -1573,12 +1646,12 @@ else:
                 else:
                     st.info(f"جدول {tbl_label} در حال حاضر خالی است.")
                 
-                multisheet_export_dict[tbl_label.split(' ')[0]] = farsi_df
+                multisheet_export_dict[tbl_label] = farsi_df
 
             st.markdown("---")
             combined_excel_file = export_to_styled_excel_multisheet(multisheet_export_dict, "archive_export.xlsx")
             st.download_button(
-                label=f"📥 دانلود فایل اکسل جامع ({len(selected_table_labels)} جدول انتخاب شده با تاریخ شمسی)",
+                label=f"📥 دانلود فایل اکسل جامع ({len(selected_table_labels)} جدول انتخاب شده با تاریخ شمسی و زمان‌ها)",
                 data=combined_excel_file,
                 file_name="selected_tables_archive.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
