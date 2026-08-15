@@ -305,7 +305,54 @@ def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی س
     output.seek(0)
     return output
 
-# --- استایل تمیز و راست‌چین CSS ---
+def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        for sheet_name, df in dict_of_dfs.items():
+            if df.empty:
+                df = pd.DataFrame(["اطلاعاتی ثبت نشده است"], columns=["وضعیت"])
+            
+            clean_sheet_name = sheet_name[:30].replace(":", "").replace("?", "").replace("*", "").replace("/", "").replace("\\", "")
+            df.to_excel(writer, index=False, sheet_name=clean_sheet_name)
+            worksheet = writer.sheets[clean_sheet_name]
+
+            worksheet.sheet_view.rightToLeft = True
+
+            header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
+            header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
+            data_font = Font(name='B Nazanin', size=11)
+            align_right = Alignment(horizontal='right', vertical='center', wrap_text=True)
+            
+            thin_border = Border(
+                left=Side(style='thin', color='CBD5E1'),
+                right=Side(style='thin', color='CBD5E1'),
+                top=Side(style='thin', color='CBD5E1'),
+                bottom=Side(style='thin', color='CBD5E1')
+            )
+
+            for col_num, col_name in enumerate(df.columns, 1):
+                cell = worksheet.cell(row=1, column=col_num)
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.border = thin_border
+
+            for row_num in range(2, len(df) + 2):
+                for col_num in range(1, len(df.columns) + 1):
+                    cell = worksheet.cell(row=row_num, column=col_num)
+                    cell.font = data_font
+                    cell.alignment = align_right
+                    cell.border = thin_border
+
+            for col in worksheet.columns:
+                max_len = max(len(str(cell.value or '')) for cell in col)
+                col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                worksheet.column_dimensions[col_letter].width = max(max_len + 5, 16)
+
+    output.seek(0)
+    return output
+
+# --- استایل تمیز و راست‌چین CSS با هماهنگ‌سازی رنگ کادرهای آماری به خاکستری ---
 st.markdown("""
 <style>
     @font-face {
@@ -656,16 +703,11 @@ else:
     choice = st.sidebar.radio("", menu_options, index=0)
 
     # ---------------------------------------------------------
-    # ۰. خانه
+    # ۰. خانه (لوگو در این بخش حذف شد)
     # ---------------------------------------------------------
     if choice == "🏠 خانه":
-        head_c1, head_col2 = st.columns([6, 1])
-        with head_c1:
-            st.title("🧩 سامانه بایگانی و مدیریت تولید قطعات چاپ سه بعدی (SLM)")
-            st.caption("این سامانه فرم‌های «پودر»، «فرم تولید»، «کنترل کیفیت (QC)» و «محاسبه‌گر قیمت» را به هم مرتبط کرده و امکان بایگانی را فراهم می‌سازد.")
-        with head_col2:
-            if os.path.exists("logo.png"):
-                st.image("logo.png", width=120)
+        st.title("🧩 سامانه بایگانی و مدیریت تولید قطعات چاپ سه بعدی (SLM)")
+        st.caption("این سامانه فرم‌های «پودر»، «فرم تولید»، «کنترل کیفیت (QC)» و «محاسبه‌گر قیمت» را به هم مرتبط کرده و امکان بایگانی را فراهم می‌سازد.")
 
         st.markdown("<br>", unsafe_allow_html=True)
         
@@ -1515,7 +1557,7 @@ else:
             )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل (با دکمه‌های مجزای فرم‌محور برای هر تب)
+    # ۶. بایگانی و گزارش‌گیری اکسل
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
