@@ -462,7 +462,6 @@ st.markdown("""
         display: none !important;
     }
 
-    /* هماهنگ‌سازی رنگ کادرهای آماری به خاکستری هماهنگ با سایر کادرها */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -703,7 +702,7 @@ else:
     choice = st.sidebar.radio("", menu_options, index=0)
 
     # ---------------------------------------------------------
-    # ۰. خانه (لوگو در این بخش حذف شد)
+    # ۰. خانه
     # ---------------------------------------------------------
     if choice == "🏠 خانه":
         st.title("🧩 سامانه بایگانی و مدیریت تولید قطعات چاپ سه بعدی (SLM)")
@@ -738,7 +737,7 @@ else:
         """, unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # ۱. پودر
+    # ۱. پودر (با داشبورد آماری موجودی و مصرف بر اساس متریال)
     # ---------------------------------------------------------
     elif choice == "📦 پودر":
         st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -747,6 +746,49 @@ else:
         powders_df = pd.read_sql_query("SELECT * FROM powders", conn)
         nora_df = pd.read_sql_query("SELECT * FROM nora_powders", conn)
         recycled_df = pd.read_sql_query("SELECT * FROM recycled_powders", conn)
+        prod_df_all = pd.read_sql_query("SELECT * FROM production", conn)
+
+        # --- داشبورد آماری پودر: پودر خریداری شده، بازیافت شده و مصرف شده ---
+        all_materials_set = sorted(list(set(
+            powders_df['material'].dropna().tolist() + 
+            nora_df['material'].dropna().tolist() + 
+            ["Steel 316", "Ti6Al4V", "Inconel 718", "Hastelloy X"]
+        )))
+        
+        c_stat_head1, c_stat_head2 = st.columns([3, 1])
+        with c_stat_head1:
+            st.subheader("📊 آمار تجمیعی پودرها (خریداری‌شده، بازیافت و مصرف)")
+        with c_stat_head2:
+            stat_mat_filter = st.selectbox("فیلتر بر اساس متریال:", ["همه متریال‌ها (کل)"] + all_materials_set, key="powder_stat_filter")
+
+        # فیلتر کردن دیتاها بر اساس متریال انتخابی
+        if stat_mat_filter == "همه متریال‌ها (کل)":
+            f_powders = powders_df
+            f_nora = nora_df
+            f_recycled = recycled_df
+            f_prod = prod_df_all
+        else:
+            f_powders = powders_df[powders_df['material'] == stat_mat_filter]
+            f_nora = nora_df[nora_df['material'] == stat_mat_filter]
+            
+            # استخراج کدهای پودر مربوط به این متریال جهت فیلتر جداول بازیافت و تولید
+            mat_powder_codes = f_powders['powder_code'].tolist() + f_nora['powder_code'].tolist()
+            f_recycled = recycled_df[recycled_df['powder_code'].isin(mat_powder_codes)]
+            f_prod = prod_df_all[prod_df_all['powder_code'].isin(mat_powder_codes)]
+
+        total_bought_g = (f_powders['weight_g'].sum() if not f_powders.empty else 0.0) + (f_nora['weight_g'].sum() if not f_nora.empty else 0.0)
+        total_recycled_g = f_recycled['recycled_powder_g'].sum() if not f_recycled.empty else 0.0
+        total_consumed_g = f_prod['input_powder_g'].sum() if not f_prod.empty else 0.0
+        total_waste_g = (f_recycled['unrecyclable_powder_g'].sum() if not f_recycled.empty else 0.0) + (f_prod['waste_powder_g'].sum() if not f_prod.empty else 0.0)
+
+        # نمایش ۴ کارت آماری متریال
+        sc1, sc2, sc3, sc4 = st.columns(4)
+        sc1.metric("کل پودر خریداری‌شده", f"{total_bought_g:,.0f} گرم")
+        sc2.metric("کل پودر بازیافت‌شده", f"{total_recycled_g:,.0f} گرم")
+        sc3.metric("کل پودر مصرف‌شده در تولید", f"{total_consumed_g:,.0f} گرم")
+        sc4.metric("کل ضایعات / غیرقابل بازیافت", f"{total_waste_g:,.0f} گرم")
+
+        st.markdown("---")
         
         sub_tab1, sub_tab2, sub_tab3 = st.tabs(["📦 ۱- پودرهای خریداری شده اولیه", "♻️ ۲- پودرهای بازیافت شده", "🏭 ۳- پودرهای خریداری شده از نورا"])
         
