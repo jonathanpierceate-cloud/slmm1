@@ -352,7 +352,7 @@ def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
     output.seek(0)
     return output
 
-# --- استایل تمیز و راست‌چین CSS ---
+# --- استایل تمیز و راست‌چین CSS با هماهنگ‌سازی رنگ کادرهای آماری به خاکستری ---
 st.markdown("""
 <style>
     @font-face {
@@ -462,21 +462,22 @@ st.markdown("""
         display: none !important;
     }
 
+    /* هماهنگ‌سازی رنگ کادرهای آماری به خاکستری مشابه سایر کادرها */
     [data-testid="stMetric"] {
-        background-color: #1e293b !important;
-        border: 1px solid #334155 !important;
-        border-radius: 10px !important;
+        background-color: #262730 !important;
+        border: 1px solid #3b3f4d !important;
+        border-radius: 8px !important;
         padding: 15px !important;
         text-align: center !important;
     }
     [data-testid="stMetricLabel"] > div {
-        color: #94a3b8 !important;
-        font-size: 1.2rem !important;
+        color: #d1d5db !important;
+        font-size: 1.15rem !important;
         justify-content: center !important;
     }
     [data-testid="stMetricValue"] > div {
-        color: #38bdf8 !important;
-        font-size: 2.2rem !important;
+        color: #60a5fa !important;
+        font-size: 2.0rem !important;
         justify-content: center !important;
     }
 
@@ -1755,7 +1756,7 @@ else:
                     else:
                         st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
                 
-                # ۵. دکمه خروجی جامع پرونده (کل بخش‌ها در یک فایل فرم‌محور)
+                # ۵. دکمه خروجی جامع پرونده
                 st.markdown("---")
                 dossier_sections = {
                     "۱- مشخصات و شناسنامه فرآیند تولید قطعه": [
@@ -1817,9 +1818,9 @@ else:
 
                 excel_dossier_bytes = build_form_layout_excel(dossier_sections, title=f"شناسنامه پرونده جامع قطعه {search_code}")
                 st.download_button(
-                    label=f"📥 دانلود خروجی اکسل پرونده جامع قطعه {search_code}",
+                    label="📥 دانلود خروجی اکسل پرونده جامع این قطعه",
                     data=excel_dossier_bytes,
-                    file_name=f"part_dossier_complete_{search_code}.xlsx",
+                    file_name=f"part_dossier_form_{search_code}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="btn_down_part_full_styled"
                 )
