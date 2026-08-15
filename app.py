@@ -17,6 +17,148 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# --- استایل ویژه جهت حذف ۱۰۰٪ قطعی تمام راهنماهای درون کادرها و راست‌چین‌سازی کامل ---
+st.markdown("""
+<style>
+    @font-face {
+        font-family: 'B Nazanin';
+        src: url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.eot');
+        src: url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.eot?#iefix') format('embedded-opentype'),
+             url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.woff') format('woff'),
+             url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.ttf') format('truetype');
+        font-weight: normal;
+        font-style: normal;
+    }
+
+    /* ۱. حذف کامل و قطعی تمام راهنماهای Press Enter to apply و متون درون کادر */
+    [data-testid="stInputInstruction"],
+    div[data-testid="stInputInstruction"],
+    .stInputInstruction,
+    div:has(> input) ~ div,
+    div:has(> textarea) ~ div,
+    [aria-live="polite"],
+    small {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0px !important;
+        width: 0px !important;
+        margin: 0px !important;
+        padding: 0px !important;
+        pointer-events: none !important;
+    }
+
+    /* ۲. راست‌چین‌سازی محتوای اصلی و سایدبار */
+    [data-testid="stMainBlockContainer"],
+    [data-testid="stSidebarUserContent"] {
+        direction: rtl !important;
+        text-align: right !important;
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
+    }
+
+    /* ۳. تنظیم فونت متون و عناوین */
+    h1, h2, h3, h4, h5, h6, p, label, button, table {
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
+    p, span, label, button {
+        font-size: 1.2rem !important;
+    }
+
+    h1 { font-size: 2.2rem !important; font-weight: bold; }
+    h2 { font-size: 1.8rem !important; font-weight: bold; }
+    h3 { font-size: 1.5rem !important; font-weight: bold; }
+
+    /* ۴. راست‌چین‌سازی ورودی‌های متنی و عددی */
+    input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
+        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
+        direction: rtl !important;
+        text-align: right !important;
+        font-size: 1.2rem !important;
+    }
+
+    /* ۵. راست‌چین کردن کامل جداول */
+    table, [data-testid="stTable"], .stTable {
+        direction: rtl !important;
+        width: 100% !important;
+        font-size: 1.15rem !important;
+        border-collapse: collapse !important;
+        text-align: right !important;
+    }
+    
+    th, td, table th, table td {
+        text-align: right !important;
+        direction: rtl !important;
+        padding: 10px !important;
+    }
+
+    /* ۶. استایل‌دهی دکمه‌های منوی سایدبار */
+    div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    div[data-testid="stSidebar"] [data-testid="stRadio"] label {
+        background-color: transparent !important;
+        border-radius: 8px !important;
+        padding: 8px 16px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        border: 1px solid transparent !important;
+        direction: rtl !important;
+        text-align: right !important;
+    }
+
+    div[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
+        background-color: #2a374e !important;
+        border: 1px solid #3b82f6 !important;
+    }
+
+    div[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"] {
+        background-color: #334155 !important;
+        border: 1px solid #475569 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    }
+
+    div[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
+        display: none !important;
+    }
+
+    /* ۷. کارت‌های آمار */
+    [data-testid="stMetric"] {
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
+        border-radius: 10px !important;
+        padding: 15px !important;
+        text-align: center !important;
+    }
+    [data-testid="stMetricLabel"] > div {
+        color: #94a3b8 !important;
+        font-size: 1.2rem !important;
+        justify-content: center !important;
+    }
+    [data-testid="stMetricValue"] > div {
+        color: #38bdf8 !important;
+        font-size: 2.2rem !important;
+        justify-content: center !important;
+    }
+
+    .stButton>button, .stDownloadButton>button {
+        width: 100%;
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        font-size: 1.2rem !important;
+        padding: 10px 20px !important;
+        border: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- توابع کمکی جهت تخت‌سازی و استخراج چک‌لیست‌ها و نوت‌ها در جدول و اکسل ---
 def flatten_powder_df(df):
     if df.empty:
@@ -124,124 +266,6 @@ def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
 
 def export_to_styled_excel(df, sheet_name="گزارش"):
     return export_to_styled_excel_multisheet({sheet_name: df})
-
-# --- استایل تمیز و راست‌چین CSS ---
-st.markdown("""
-<style>
-    @font-face {
-        font-family: 'B Nazanin';
-        src: url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.eot');
-        src: url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.eot?#iefix') format('embedded-opentype'),
-             url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.woff') format('woff'),
-             url('https://cdn.fontcdn.ir/Font/Persian/BNazanin/BNazanin.ttf') format('truetype');
-        font-weight: normal;
-        font-style: normal;
-    }
-
-    [data-testid="stMainBlockContainer"],
-    [data-testid="stSidebarUserContent"] {
-        direction: rtl !important;
-        text-align: right !important;
-        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
-    }
-
-    h1, h2, h3, h4, h5, h6, p, label, button, table {
-        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
-        direction: rtl !important;
-        text-align: right !important;
-    }
-
-    p, span, label, button {
-        font-size: 1.2rem !important;
-    }
-
-    h1 { font-size: 2.2rem !important; font-weight: bold; }
-    h2 { font-size: 1.8rem !important; font-weight: bold; }
-    h3 { font-size: 1.5rem !important; font-weight: bold; }
-
-    input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
-        font-family: 'B Nazanin', 'Vazir', sans-serif !important;
-        direction: rtl !important;
-        text-align: right !important;
-        font-size: 1.2rem !important;
-    }
-
-    table, [data-testid="stTable"], .stTable {
-        direction: rtl !important;
-        width: 100% !important;
-        font-size: 1.15rem !important;
-        border-collapse: collapse !important;
-        text-align: right !important;
-    }
-    
-    th, td, table th, table td {
-        text-align: right !important;
-        direction: rtl !important;
-        padding: 10px !important;
-    }
-
-    div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    div[data-testid="stSidebar"] [data-testid="stRadio"] label {
-        background-color: transparent !important;
-        border-radius: 8px !important;
-        padding: 8px 16px !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
-        border: 1px solid transparent !important;
-        direction: rtl !important;
-        text-align: right !important;
-    }
-
-    div[data-testid="stSidebar"] [data-testid="stRadio"] label:hover {
-        background-color: #2a374e !important;
-        border: 1px solid #3b82f6 !important;
-    }
-
-    div[data-testid="stSidebar"] [data-testid="stRadio"] label[data-checked="true"] {
-        background-color: #334155 !important;
-        border: 1px solid #475569 !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-    }
-
-    div[data-testid="stSidebar"] [data-testid="stRadio"] input[type="radio"] {
-        display: none !important;
-    }
-
-    [data-testid="stMetric"] {
-        background-color: #1e293b !important;
-        border: 1px solid #334155 !important;
-        border-radius: 10px !important;
-        padding: 15px !important;
-        text-align: center !important;
-    }
-    [data-testid="stMetricLabel"] > div {
-        color: #94a3b8 !important;
-        font-size: 1.2rem !important;
-        justify-content: center !important;
-    }
-    [data-testid="stMetricValue"] > div {
-        color: #38bdf8 !important;
-        font-size: 2.2rem !important;
-        justify-content: center !important;
-    }
-
-    .stButton>button, .stDownloadButton>button {
-        width: 100%;
-        background-color: #2563eb !important;
-        color: #ffffff !important;
-        border-radius: 8px !important;
-        font-weight: bold !important;
-        font-size: 1.2rem !important;
-        padding: 10px 20px !important;
-        border: none !important;
-    }
-</style>
-""", unsafe_allow_html=True)
 
 FARSI_HEADERS_MAP = {
     'powder_code': 'شماره ظرف پودر',
@@ -873,7 +897,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۲. فرم تولید (امکان ثبت و ویرایش قطعه)
+    # ۲. فرم تولید
     # ---------------------------------------------------------
     elif choice == "🏭 فرم تولید":
         st.header("🏭 فرم رکورد تولید (Production Form.xlsx)")
@@ -991,7 +1015,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۳. کنترل کیفیت (امکان بازخوانی و ادیت نتایج و نوت‌های قبلی)
+    # ۳. کنترل کیفیت
     # ---------------------------------------------------------
     elif choice == "❇️ کنترل کیفیت":
         st.header("🔬 فرم کنترل کیفیت (QC.xlsx)")
@@ -1005,7 +1029,6 @@ else:
             selected_part = st.selectbox("انتخاب کد قطعه جهت ارزیابی / ویرایش کیفیت:", parts_list['part_code'])
             part_info = pd.read_sql_query("SELECT * FROM production WHERE part_code=?", conn, params=(selected_part,)).iloc[0]
             
-            # بررسی آیا قبلا برای این قطعه فرم QC ثبت شده است
             existing_qc = pd.read_sql_query("SELECT * FROM qc WHERE part_code=?", conn, params=(selected_part,))
             saved_qc_data = {}
             saved_inspector, saved_engineer, saved_manager = "", "", ""
@@ -1096,7 +1119,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۴. محاسبه‌گر هزینه (امکان بازخوانی و ادیت محاسبات قبلی)
+    # ۴. محاسبه‌گر هزینه
     # ---------------------------------------------------------
     elif choice == "💰 محاسبه‌گر هزینه":
         st.header("💰 محاسبه‌گر بهای تمام شده و قیمت فروش (Cost Calculator.xlsx)")
@@ -1149,7 +1172,6 @@ else:
         def_pwd_type = "Steel 316"
         
         if selected_part != "جدید":
-            # بررسی اگر قبلا محاسبه هزینه ثبت شده بود مقادیر قبلی را لود کن
             prev_cost_row = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(selected_part,))
             if not prev_cost_row.empty:
                 c_row = prev_cost_row.iloc[0]
@@ -1285,7 +1307,7 @@ else:
             r_inconel = st.number_input("پودر Inconel 718", min_value=0.0, value=float(current_rates.get("powder_price_Inconel_718", 300000000)))
             r_hastelloy = st.number_input("پودر Hastelloy X", min_value=0.0, value=float(current_rates.get("powder_price_Hastelloy_X", 400000000)))
 
-        st.markdown("---")
+            st.markdown("---")
         st.subheader("۲. نرخ ساعتی استهلاک دستگاه‌ها (ریال / ساعت)")
         m1, m2 = st.columns(2)
         with m1:
