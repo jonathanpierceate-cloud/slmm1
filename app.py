@@ -17,7 +17,50 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- استایل ویژه جهت حذف ۱۰۰٪ قطعی تمام راهنماهای درون کادرها و راست‌چین‌سازی کامل ---
+# --- تابع استاندارد و دقیق تبدیل تاریخ میلادی به هجری شمسی ---
+def gregorian_to_jalali(gy, gm, gd):
+    g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
+    if gy > 1600:
+        jy = 979
+        gy -= 1600
+    else:
+        jy = 0
+        gy -= 621
+    gy2 = gy if gm > 2 else gy - 1
+    days = (365 * gy) + ((gy2 + 4) // 4) - ((gy2 + 100) // 100) + ((gy2 + 400) // 400) - 80 + gd + g_d_m[gm - 1]
+    jy += 33 * (days // 12053)
+    days %= 12053
+    jy += 4 * (days // 1461)
+    days %= 1461
+    if days > 365:
+        jy += (days - 1) // 365
+        days = (days - 1) % 365
+    if days < 186:
+        jm = 1 + (days // 31)
+        jd = 1 + (days % 31)
+    else:
+        jm = 7 + ((days - 186) // 30)
+        jd = 1 + ((days - 186) % 30)
+    return f"{jy:04d}/{jm:02d}/{jd:02d}"
+
+def get_today_jalali():
+    now = datetime.now()
+    return gregorian_to_jalali(now.year, now.month, now.day)
+
+def format_jalali_date(date_str):
+    if not date_str:
+        return ""
+    date_clean = str(date_str).strip()
+    if "-" in date_clean:
+        parts = date_clean.split("-")
+        if len(parts) == 3 and len(parts[0]) == 4:
+            try:
+                return gregorian_to_jalali(int(parts[0]), int(parts[1]), int(parts[2]))
+            except Exception:
+                return date_clean
+    return date_clean
+
+# --- استایل تمیز و راست‌چین CSS با حذف کامل متون راهنمای مزاحم ---
 st.markdown("""
 <style>
     @font-face {
@@ -30,7 +73,6 @@ st.markdown("""
         font-style: normal;
     }
 
-    /* ۱. حذف کامل و قطعی تمام راهنماهای Press Enter to apply و متون درون کادر */
     [data-testid="stInputInstruction"],
     div[data-testid="stInputInstruction"],
     .stInputInstruction,
@@ -48,7 +90,6 @@ st.markdown("""
         pointer-events: none !important;
     }
 
-    /* ۲. راست‌چین‌سازی محتوای اصلی و سایدبار */
     [data-testid="stMainBlockContainer"],
     [data-testid="stSidebarUserContent"] {
         direction: rtl !important;
@@ -56,7 +97,6 @@ st.markdown("""
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
     }
 
-    /* ۳. تنظیم فونت متون و عناوین */
     h1, h2, h3, h4, h5, h6, p, label, button, table {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
@@ -71,7 +111,6 @@ st.markdown("""
     h2 { font-size: 1.8rem !important; font-weight: bold; }
     h3 { font-size: 1.5rem !important; font-weight: bold; }
 
-    /* ۴. راست‌چین‌سازی ورودی‌های متنی و عددی */
     input, select, textarea, div[data-baseweb="input"] input, div[data-baseweb="select"] div {
         font-family: 'B Nazanin', 'Vazir', sans-serif !important;
         direction: rtl !important;
@@ -79,7 +118,6 @@ st.markdown("""
         font-size: 1.2rem !important;
     }
 
-    /* ۵. راست‌چین کردن کامل جداول */
     table, [data-testid="stTable"], .stTable {
         direction: rtl !important;
         width: 100% !important;
@@ -94,7 +132,6 @@ st.markdown("""
         padding: 10px !important;
     }
 
-    /* ۶. استایل‌دهی دکمه‌های منوی سایدبار */
     div[data-testid="stSidebar"] [data-testid="stRadio"] > div {
         display: flex;
         flex-direction: column;
@@ -127,7 +164,6 @@ st.markdown("""
         display: none !important;
     }
 
-    /* ۷. کارت‌های آمار */
     [data-testid="stMetric"] {
         background-color: #1e293b !important;
         border: 1px solid #334155 !important;
@@ -159,7 +195,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- توابع کمکی جهت تخت‌سازی و استخراج چک‌لیست‌ها و نوت‌ها در جدول و اکسل ---
+# --- توابع کمکی جهت استخراج کامل چک‌لیست‌ها و تاریخ‌های شمسی در جدول و اکسل ---
 def flatten_powder_df(df):
     if df.empty:
         return df
@@ -169,7 +205,7 @@ def flatten_powder_df(df):
             'شماره ظرف پودر': row.get('powder_code', ''),
             'جنس / نوع متریال پودر': row.get('material', ''),
             'وزن پودر (گرم)': row.get('weight_g', 0.0),
-            'تاریخ ثبت': row.get('date', '')
+            'تاریخ ثبت': format_jalali_date(row.get('date', ''))
         }
         raw_json = row.get('checklist_json', '')
         if raw_json:
@@ -196,7 +232,7 @@ def flatten_qc_df(df):
             'نام قطعه': row.get('part_name', ''),
             'شماره ظرف پودر مصرفی': row.get('material', ''),
             'مدل دستگاه': row.get('machine_model', ''),
-            'تاریخ ثبت بازرسی': row.get('date', ''),
+            'تاریخ ثبت بازرسی': format_jalali_date(row.get('date', '')),
             'بازرس کنترل کیفیت': row.get('qc_inspector', ''),
             'مسئول مهندسی کیفیت': row.get('qc_engineer', ''),
             'مدیر تضمین کیفیت': row.get('qa_manager', '')
@@ -215,6 +251,16 @@ def flatten_qc_df(df):
                 pass
         records.append(r_dict)
     return pd.DataFrame(records)
+
+def format_production_dates(df):
+    if df.empty:
+        return df
+    df_copy = df.copy()
+    date_cols = ['date', 'start_date', 'end_date', 'delivery_date']
+    for col in date_cols:
+        if col in df_copy.columns:
+            df_copy[col] = df_copy[col].apply(format_jalali_date)
+    return df_copy
 
 # --- تابع عمومی ساخت فایل اکسل کاملاً راست‌چین و شکیل ---
 def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
@@ -271,7 +317,7 @@ FARSI_HEADERS_MAP = {
     'powder_code': 'شماره ظرف پودر',
     'material': 'جنس / نوع متریال پودر',
     'weight_g': 'وزن پودر (گرم)',
-    'date': 'تاریخ ثبت',
+    'date': 'تاریخ ثبت (شمسی)',
     'id': 'شناسه',
     'recycled_batch_code': 'کد پارت بازیافت',
     'input_powder_g': 'پودر ورودی به دستگاه (گرم)',
@@ -284,9 +330,9 @@ FARSI_HEADERS_MAP = {
     'machine_model': 'مدل دستگاه',
     'build_time_hrs': 'زمان تولید (ساعت)',
     'downtime_hrs': 'زمان توقف (ساعت)',
-    'start_date': 'تاریخ شروع',
+    'start_date': 'تاریخ شروع (شمسی)',
     'start_time': 'ساعت شروع',
-    'end_date': 'تاریخ پایان',
+    'end_date': 'تاریخ پایان (شمسی)',
     'end_time': 'ساعت پایان',
     'setup_time_hrs': 'زمان آماده‌سازی (ساعت)',
     'cleaning_time_hrs': 'زمان تمیزکاری (ساعت)',
@@ -298,7 +344,7 @@ FARSI_HEADERS_MAP = {
     'build_plate_init_wt_g': 'وزن اولیه صفحه ساخت (گرم)',
     'build_plate_post_wt_g': 'وزن صفحه ساخت بعد پرداخت (گرم)',
     'engraving_qty': 'تعداد حکاکی لیزر',
-    'delivery_date': 'تاریخ تحویل',
+    'delivery_date': 'تاریخ تحویل (شمسی)',
     'qc_inspector': 'بازرس کنترل کیفیت',
     'qc_engineer': 'مسئول مهندسی کیفیت',
     'qa_manager': 'مدیر تضمین کیفیت',
@@ -628,19 +674,19 @@ else:
 
         st.markdown("---")
         st.subheader("راهنمای گردش کار")
-        st.markdown("""
-        1. **📦 پودر** — ثبت و ویرایش ظروف پودر خریداری شده اولیه، بازیافتی یا پودرهای نورا به همراه آزمون‌های چک‌لیست و ملاحظات تفکیکی.
-        2. **🏭 فرم تولید** — ثبت و ویرایش مشخصات قطعات، زمان‌های ساخت، اوزان متریال و درصد فیلتر دستگاه.
-        3. **❇️ کنترل کیفیت (QC)** — ثبت و ویرایش نتایج تست‌های چشمی، ابعادی و مکانیکی به همراه ثبت نوت برای هر آزمون.
-        4. **💰 محاسبه‌گر هزینه** — برآورد و ویرایش بهای تمام شده قطعات بر اساس آخرین نرخ‌های پایگاه داده.
-        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه کامل هر قطعه و دریافت خروجی اکسل چندبرگه شامل کلیه مشخصات و نوت‌ها.
+        st.markdown(f"""
+        1. **📦 پودر** — ثبت و ویرایش ظروف پودر خریداری شده اولیه، بازیافتی یا پودرهای نورا با تاریخ شمسی و ذخیره کامل نوت‌ها.
+        2. **🏭 فرم تولید** — تعریف «کد قطعه» و اتصال آن به «کد ظرف پودر» و ثبت زمان‌ها و تاریخ‌های شمسی فرآیند.
+        3. **❇️ کنترل کیفیت (QC)** — ثبت و ویرایش نتایج تست‌های کیفی و یادداشت‌ها با تاریخ هجری شمسی.
+        4. **💰 محاسبه‌گر هزینه** — برآورد خودکار هزینه‌های تولید و قیمت فروش نهایی بر اساس آخرین نرخ‌های روز.
+        5. **🔍 بایگانی و جستجو** — استعلام شناسنامه جامع قطعات و دریافت خروجی اکسل با تاریخ‌های شمسی.
         
         <br>
-        <p style='color: #94a3b8; font-size: 1.1rem;'>از منوی سمت راست بین صفحات جابه‌جا شوید.</p>
+        <p style='color: #94a3b8; font-size: 1.1rem;'>امروز: {get_today_jalali()} | از منوی سمت راست بین صفحات جابه‌جا شوید.</p>
         """, unsafe_allow_html=True)
 
     # ---------------------------------------------------------
-    # ۱. پودر (امکان انتخاب و ادیت کامل رکوردهای قبلی)
+    # ۱. پودر (با تاریخ شمسی و استخراج کامل نوت‌ها)
     # ---------------------------------------------------------
     elif choice == "📦 پودر":
         st.header("🧪 فرم مدیریت، آنالیز و بایگانی پودر")
@@ -685,8 +731,8 @@ else:
                     def_wt = float(edit_pwd_init_data.get('weight_g', 10000.0))
                     weight_g = st.number_input("وزن پودر (گرم)", min_value=0.0, value=def_wt)
                     
-                    def_date_val = datetime.strptime(edit_pwd_init_data.get('date', datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
-                    date_str = st.date_input("تاریخ ورود/تست", value=def_date_val).strftime("%Y-%m-%d")
+                    def_date_val = format_jalali_date(edit_pwd_init_data.get('date', '')) if mode_pwd_init == "ویرایش پودر موجود" else get_today_jalali()
+                    date_str = st.text_input("تاریخ ورود/تست (هجری شمسی)", value=def_date_val)
                     
                 st.markdown("---")
                 st.subheader("📋 چک‌لیست آزمون‌های خواص پودر")
@@ -728,7 +774,7 @@ else:
                     flat_powders = flatten_powder_df(powders_df) if not powders_df.empty else pd.DataFrame()
                     excel_file = export_to_styled_excel(flat_powders, "پودرهای اولیه")
                     st.download_button(
-                        label="📥 دانلود خروجی اکسل کامل (با نوت‌ها)",
+                        label="📥 دانلود خروجی اکسل کامل (با نوت‌ها و تاریخ شمسی)",
                         data=excel_file,
                         file_name="powders_initial_detailed.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -787,8 +833,8 @@ else:
                     recycled_powder_g = input_powder_g - unrecyclable_powder_g
                     st.metric("مقدار پودر بازیافت‌شده قابل استفاده (گرم)", f"{recycled_powder_g:,.1f}")
                     
-                    def_rec_dt = datetime.strptime(edit_rec_data.get('date', datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
-                    rec_date = st.date_input("تاریخ بازیافت", value=def_rec_dt).strftime("%Y-%m-%d")
+                    def_rec_dt = format_jalali_date(edit_rec_data.get('date', '')) if mode_rec == "ویرایش پارت موجود" else get_today_jalali()
+                    rec_date = st.text_input("تاریخ بازیافت (هجری شمسی)", value=def_rec_dt)
                     rec_notes = st.text_input("توضیحات و ملاحظات غربال‌گری / الک", value=edit_rec_data.get('notes', ''))
                 
                 r_btn1, r_btn2 = st.columns([3, 2])
@@ -813,7 +859,10 @@ else:
                         else:
                             st.error("شناسه پارت بازیافت الزامی است.")
                 with r_btn2:
-                    display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP) if not recycled_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                    rec_formatted_df = recycled_df.copy()
+                    if not rec_formatted_df.empty and 'date' in rec_formatted_df.columns:
+                        rec_formatted_df['date'] = rec_formatted_df['date'].apply(format_jalali_date)
+                    display_recycled_df = rec_formatted_df.rename(columns=FARSI_HEADERS_MAP) if not rec_formatted_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                     excel_file_rec = export_to_styled_excel(display_recycled_df, "پودرهای بازیافتی")
                     st.download_button(
                         label="📥 دانلود خروجی اکسل کامل پودرهای بازیافتی",
@@ -826,7 +875,10 @@ else:
             st.markdown("---")
             st.subheader("📊 جدول بایگانی پودرهای بازیافت شده")
             if not recycled_df.empty:
-                display_recycled_df = recycled_df.rename(columns=FARSI_HEADERS_MAP)
+                rec_formatted_df = recycled_df.copy()
+                if 'date' in rec_formatted_df.columns:
+                    rec_formatted_df['date'] = rec_formatted_df['date'].apply(format_jalali_date)
+                display_recycled_df = rec_formatted_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(display_recycled_df)
             else:
                 st.info("هنوز رکوردی برای پودر بازیافت شده ثبت نشده است.")
@@ -856,8 +908,8 @@ else:
                 def_nwt = float(edit_nora_data.get('weight_g', 10000.0))
                 nora_weight_g = st.number_input("مقدار / وزن پودر (گرم)", min_value=0.0, value=def_nwt, key="nora_wt")
                 
-                def_ndt = datetime.strptime(edit_nora_data.get('date', datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
-                nora_date = st.date_input("تاریخ ورود/تحویل", value=def_ndt, key="nora_dt").strftime("%Y-%m-%d")
+                def_ndt = format_jalali_date(edit_nora_data.get('date', '')) if mode_nora == "ویرایش پودر موجود نورا" else get_today_jalali()
+                nora_date = st.text_input("تاریخ ورود/تحویل (هجری شمسی)", value=def_ndt, key="nora_dt")
                 
             n_btn1, n_btn2 = st.columns([3, 2])
             with n_btn1:
@@ -876,7 +928,10 @@ else:
                     else:
                         st.error("لطفاً کد/شماره ظرف پودر را وارد کنید.")
             with n_btn2:
-                disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP) if not nora_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                nora_formatted_df = nora_df.copy()
+                if not nora_formatted_df.empty and 'date' in nora_formatted_df.columns:
+                    nora_formatted_df['date'] = nora_formatted_df['date'].apply(format_jalali_date)
+                disp_nora = nora_formatted_df.rename(columns=FARSI_HEADERS_MAP) if not nora_formatted_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                 excel_file_nora = export_to_styled_excel(disp_nora, "پودرهای نورا")
                 st.download_button(
                     label="📥 دانلود خروجی اکسل کامل پودرهای نورا",
@@ -889,7 +944,10 @@ else:
             st.markdown("---")
             st.subheader("📊 جدول پودرهای خریداری شده از نورا")
             if not nora_df.empty:
-                disp_nora = nora_df.rename(columns=FARSI_HEADERS_MAP)
+                nora_formatted_df = nora_df.copy()
+                if 'date' in nora_formatted_df.columns:
+                    nora_formatted_df['date'] = nora_formatted_df['date'].apply(format_jalali_date)
+                disp_nora = nora_formatted_df.rename(columns=FARSI_HEADERS_MAP)
                 st.table(disp_nora)
             else:
                 st.info("هنوز پودری از نورا ثبت نشده است.")
@@ -897,7 +955,7 @@ else:
         conn.close()
 
     # ---------------------------------------------------------
-    # ۲. فرم تولید
+    # ۲. فرم تولید (با تاریخ‌های شمسی)
     # ---------------------------------------------------------
     elif choice == "🏭 فرم تولید":
         st.header("🏭 فرم رکورد تولید (Production Form.xlsx)")
@@ -936,7 +994,9 @@ else:
                 machine_model = st.selectbox("مدل دستگاه", machine_options, index=default_machine_index)
             with col3:
                 quantity = st.number_input("تعداد روی صفحه ساخت", min_value=1, value=int(edit_data.get("quantity", 1)))
-                date_str = st.date_input("تاریخ ساخت", value=datetime.strptime(edit_data.get("date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")).strftime("%Y-%m-%d")
+                
+                def_prod_dt = format_jalali_date(edit_data.get("date", '')) if mode == "ویرایش قطعه موجود" else get_today_jalali()
+                date_str = st.text_input("تاریخ ساخت (هجری شمسی)", value=def_prod_dt)
                 
             st.markdown("---")
             st.subheader("⏱️ ۱- زمان آماده‌سازی و ساخت")
@@ -945,9 +1005,9 @@ else:
                 build_time_hrs = st.number_input("زمان تولید (ساعت)", min_value=0.0, value=float(edit_data.get("build_time_hrs", 0.0)))
                 downtime_hrs = st.number_input("زمان توقف حین ساخت (ساعت)", min_value=0.0, value=float(edit_data.get("downtime_hrs", 0.0)))
             with tc2:
-                start_date = st.text_input("تاریخ شروع", value=edit_data.get("start_date", date_str))
+                start_date = st.text_input("تاریخ شروع (هجری شمسی)", value=format_jalali_date(edit_data.get("start_date", date_str)))
                 start_time = st.text_input("ساعت شروع", value=edit_data.get("start_time", "08:00"))
-                end_date = st.text_input("تاریخ پایان", value=edit_data.get("end_date", date_str))
+                end_date = st.text_input("تاریخ پایان (هجری شمسی)", value=format_jalali_date(edit_data.get("end_date", date_str)))
                 end_time = st.text_input("ساعت پایان", value=edit_data.get("end_time", "16:00"))
             with tc3:
                 setup_time_hrs = st.number_input("زمان آماده‌سازی دستگاه (ساعت)", min_value=0.0, value=float(edit_data.get("setup_time_hrs", 0.0)))
@@ -993,7 +1053,8 @@ else:
                         st.error("لطفاً کد قطعه را مشخص کنید.")
             with p_btn2:
                 prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
-                clean_prod_df = prod_all_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP) if not prod_all_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
+                prod_formatted_df = format_production_dates(prod_all_df)
+                clean_prod_df = prod_formatted_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP) if not prod_formatted_df.empty else pd.DataFrame(columns=FARSI_HEADERS_MAP.values())
                 excel_file_prod = export_to_styled_excel(clean_prod_df, "رکوردهای تولید")
                 st.download_button(
                     label="📥 دانلود خروجی اکسل کامل رکوردهای تولید",
@@ -1004,10 +1065,11 @@ else:
                 )
                         
         st.markdown("---")
-        st.subheader("📂 جدول تمامی رکوردهای تولید قبلی")
+        st.subheader("📂 جدول تمامی رکوردهای تولید قبلی (با تاریخ شمسی)")
         prod_all_df = pd.read_sql_query("SELECT * FROM production", conn)
         if not prod_all_df.empty:
-            clean_prod_df = prod_all_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
+            prod_formatted_df = format_production_dates(prod_all_df)
+            clean_prod_df = prod_formatted_df.drop(columns=['finishing_json'], errors='ignore').rename(columns=FARSI_HEADERS_MAP)
             st.table(clean_prod_df)
         else:
             st.info("هنوز هیچ فرم تولیدی ثبت نشده است.")
@@ -1032,6 +1094,7 @@ else:
             existing_qc = pd.read_sql_query("SELECT * FROM qc WHERE part_code=?", conn, params=(selected_part,))
             saved_qc_data = {}
             saved_inspector, saved_engineer, saved_manager = "", "", ""
+            saved_qc_date = get_today_jalali()
             
             if not existing_qc.empty:
                 st.info("⚠️ برای این قطعه قبلاً فرم QC ثبت شده است؛ مقادیر و نوت‌های قبلی بارگذاری شدند و می‌توانید آن‌ها را ویرایش کنید.")
@@ -1039,6 +1102,7 @@ else:
                 saved_inspector = qc_row.get('qc_inspector', '')
                 saved_engineer = qc_row.get('qc_engineer', '')
                 saved_manager = qc_row.get('qa_manager', '')
+                saved_qc_date = format_jalali_date(qc_row.get('date', ''))
                 raw_qc_json = qc_row.get('qc_checks_json', '')
                 if raw_qc_json:
                     try:
@@ -1047,6 +1111,8 @@ else:
                         pass
             
             st.info(f"**نام قطعه:** {part_info['part_name']} | **دستگاه:** {part_info['machine_model']} | **شماره ظرف پودر:** {part_info['powder_code']}")
+            
+            qc_date_input = st.text_input("تاریخ ثبت بازرسی (هجری شمسی)", value=saved_qc_date)
             
             st.subheader("📋 تست‌ها و بازرسی‌های کیفی (شامل نتیجه و یادداشت‌های تفکیکی)")
             tests = [
@@ -1091,7 +1157,7 @@ else:
                                  (part_code, part_name, material, machine_model, date, qc_checks_json, qc_inspector, qc_engineer, qa_manager)
                                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                               (selected_part, part_info['part_name'], part_info['powder_code'], part_info['machine_model'],
-                               datetime.now().strftime("%Y-%m-%d"), json.dumps(qc_data, ensure_ascii=False), inspector, engineer, manager))
+                               qc_date_input, json.dumps(qc_data, ensure_ascii=False), inspector, engineer, manager))
                     conn.commit()
                     st.success("نتایج ارزیابی QC با موفقیت ذخیره شد.")
                     st.rerun()
@@ -1100,7 +1166,7 @@ else:
                 flat_qc_df = flatten_qc_df(qc_all_df) if not qc_all_df.empty else pd.DataFrame()
                 excel_file_qc = export_to_styled_excel(flat_qc_df, "گزارشات کامل QC")
                 st.download_button(
-                    label="📥 دانلود خروجی اکسل کامل گزارشات QC (با نوت‌ها)",
+                    label="📥 دانلود خروجی اکسل کامل گزارشات QC (با نوت‌ها و تاریخ شمسی)",
                     data=excel_file_qc,
                     file_name="qc_reports_detailed.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1108,7 +1174,7 @@ else:
                 )
                     
         st.markdown("---")
-        st.subheader("📂 جدول تمامی گزارش‌های ارزیابی کیفیت (QC) قبلی (با تمام نوت‌ها و تست‌ها)")
+        st.subheader("📂 جدول تمامی گزارش‌های ارزیابی کیفیت (QC) قبلی (با تمام نوت‌ها و تاریخ شمسی)")
         qc_all_df = pd.read_sql_query("SELECT * FROM qc", conn)
         if not qc_all_df.empty:
             flat_qc_display = flatten_qc_df(qc_all_df)
@@ -1307,7 +1373,7 @@ else:
             r_inconel = st.number_input("پودر Inconel 718", min_value=0.0, value=float(current_rates.get("powder_price_Inconel_718", 300000000)))
             r_hastelloy = st.number_input("پودر Hastelloy X", min_value=0.0, value=float(current_rates.get("powder_price_Hastelloy_X", 400000000)))
 
-            st.markdown("---")
+        st.markdown("---")
         st.subheader("۲. نرخ ساعتی استهلاک دستگاه‌ها (ریال / ساعت)")
         m1, m2 = st.columns(2)
         with m1:
@@ -1382,7 +1448,7 @@ else:
             )
 
     # ---------------------------------------------------------
-    # ۶. بایگانی و گزارش‌گیری اکسل (پیشرفته، تفکیک کامل نوت‌ها و چندانتخابی)
+    # ۶. بایگانی و گزارش‌گیری اکسل (پیشرفته با تاریخ‌های شمسی و تفکیک نوت‌ها)
     # ---------------------------------------------------------
     elif choice == "🔍 بایگانی":
         st.header("🔍 بایگانی جامع، استعلام پرونده‌ها و مدیریت رکوردها")
@@ -1401,7 +1467,7 @@ else:
             cost_df = pd.read_sql_query("SELECT * FROM cost_calculator WHERE part_code=?", conn, params=(search_code,))
             
             if not prod_df.empty:
-                st.success(f"اطلاعات کامل پرونده قطعه {search_code} یافت شد.")
+                st.success(f"اطلاعات کامل پرونده قطعه {search_code} با تاریخ شمسی یافت شد.")
                 tab1, tab2, tab3, tab4 = st.tabs(["📌 پارامترهای تولید", "🧪 اطلاعات پودر مصرفی (با نوت‌ها)", "🔬 کنترل کیفیت QC (با نوت‌ها)", "💰 برآورد مالی"])
                 
                 sheet_dict_part = {}
@@ -1409,7 +1475,8 @@ else:
                 
                 with tab1:
                     st.subheader("مشخصات فنی و فرآیند ساخت")
-                    clean_prod = prod_df.drop(columns=[c for c in json_cols_to_drop if c in prod_df.columns], errors='ignore')
+                    prod_fmt = format_production_dates(prod_df)
+                    clean_prod = prod_fmt.drop(columns=[c for c in json_cols_to_drop if c in prod_fmt.columns], errors='ignore')
                     disp_prod = clean_prod.rename(columns=FARSI_HEADERS_MAP)
                     st.table(disp_prod.T)
                     sheet_dict_part["فرآیند تولید"] = disp_prod
@@ -1445,7 +1512,6 @@ else:
                     else:
                         st.info("محاسبه هزینه برای این قطعه ثبت نشده است.")
                 
-                # دانلود اکسل چندبرگه جامع قطعه
                 excel_part_all = export_to_styled_excel_multisheet(sheet_dict_part, f"پرونده_{search_code}.xlsx")
                 st.download_button(
                     label=f"📥 دانلود خروجی اکسل پرونده جامع قطعه {search_code} (شامل تمام بخش‌ها و نوت‌ها)",
@@ -1458,7 +1524,7 @@ else:
         st.markdown("---")
         
         # ۲. بخش مشاهده و خروجی چندانتخابی جداول دیتابیس
-        st.subheader("📂 مشاهده و دانلود چندانتخابی جداول پایگاه داده (همراه با تمامی آزمون‌ها و نوت‌ها)")
+        st.subheader("📂 مشاهده و دانلود چندانتخابی جداول پایگاه داده (همراه با تاریخ‌های شمسی و نوت‌ها)")
         
         table_options_map = {
             "آنالیز پودر اولیه (با نوت‌ها)": "powders",
@@ -1487,6 +1553,16 @@ else:
                     farsi_df = flatten_powder_df(raw_df)
                 elif tbl_name == "qc":
                     farsi_df = flatten_qc_df(raw_df)
+                elif tbl_name == "production":
+                    prod_fmt = format_production_dates(raw_df)
+                    clean_df = prod_fmt.drop(columns=[col for col in json_cols_to_drop if col in prod_fmt.columns], errors='ignore')
+                    farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
+                elif tbl_name in ["recycled_powders", "nora_powders"]:
+                    raw_copy = raw_df.copy()
+                    if 'date' in raw_copy.columns:
+                        raw_copy['date'] = raw_copy['date'].apply(format_jalali_date)
+                    clean_df = raw_copy.drop(columns=[col for col in json_cols_to_drop if col in raw_copy.columns], errors='ignore')
+                    farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
                 else:
                     clean_df = raw_df.drop(columns=[col for col in json_cols_to_drop if col in raw_df.columns], errors='ignore')
                     farsi_df = clean_df.rename(columns=FARSI_HEADERS_MAP)
@@ -1499,11 +1575,10 @@ else:
                 
                 multisheet_export_dict[tbl_label.split(' ')[0]] = farsi_df
 
-            # دکمه دانلود اکسل جامع برای جداول انتخاب شده
             st.markdown("---")
             combined_excel_file = export_to_styled_excel_multisheet(multisheet_export_dict, "archive_export.xlsx")
             st.download_button(
-                label=f"📥 دانلود فایل اکسل جامع ({len(selected_table_labels)} جدول انتخاب شده به همراه کلیه نوت‌ها)",
+                label=f"📥 دانلود فایل اکسل جامع ({len(selected_table_labels)} جدول انتخاب شده با تاریخ شمسی)",
                 data=combined_excel_file,
                 file_name="selected_tables_archive.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
