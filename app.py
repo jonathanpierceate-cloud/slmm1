@@ -305,54 +305,7 @@ def build_form_layout_excel(sections_dict, title="کاربرگ اختصاصی س
     output.seek(0)
     return output
 
-def export_to_styled_excel_multisheet(dict_of_dfs, file_name="export.xlsx"):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        for sheet_name, df in dict_of_dfs.items():
-            if df.empty:
-                df = pd.DataFrame(["اطلاعاتی ثبت نشده است"], columns=["وضعیت"])
-            
-            clean_sheet_name = sheet_name[:30].replace(":", "").replace("?", "").replace("*", "").replace("/", "").replace("\\", "")
-            df.to_excel(writer, index=False, sheet_name=clean_sheet_name)
-            worksheet = writer.sheets[clean_sheet_name]
-
-            worksheet.sheet_view.rightToLeft = True
-
-            header_font = Font(name='B Nazanin', size=12, bold=True, color='FFFFFF')
-            header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
-            data_font = Font(name='B Nazanin', size=11)
-            align_right = Alignment(horizontal='right', vertical='center', wrap_text=True)
-            
-            thin_border = Border(
-                left=Side(style='thin', color='CBD5E1'),
-                right=Side(style='thin', color='CBD5E1'),
-                top=Side(style='thin', color='CBD5E1'),
-                bottom=Side(style='thin', color='CBD5E1')
-            )
-
-            for col_num, col_name in enumerate(df.columns, 1):
-                cell = worksheet.cell(row=1, column=col_num)
-                cell.font = header_font
-                cell.fill = header_fill
-                cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-                cell.border = thin_border
-
-            for row_num in range(2, len(df) + 2):
-                for col_num in range(1, len(df.columns) + 1):
-                    cell = worksheet.cell(row=row_num, column=col_num)
-                    cell.font = data_font
-                    cell.alignment = align_right
-                    cell.border = thin_border
-
-            for col in worksheet.columns:
-                max_len = max(len(str(cell.value or '')) for cell in col)
-                col_letter = openpyxl.utils.get_column_letter(col[0].column)
-                worksheet.column_dimensions[col_letter].width = max(max_len + 5, 16)
-
-    output.seek(0)
-    return output
-
-# --- استایل تمیز و راست‌چین CSS با هماهنگ‌سازی رنگ کادرهای آماری به خاکستری ---
+# --- استایل تمیز و راست‌چین CSS ---
 st.markdown("""
 <style>
     @font-face {
@@ -462,21 +415,21 @@ st.markdown("""
         display: none !important;
     }
 
-    /* هماهنگ‌سازی رنگ کادرهای آماری به خاکستری مشابه سایر کادرها */
+    /* هماهنگ‌سازی رنگ کادرهای آماری به خاکستری هماهنگ با سایر کادرها */
     [data-testid="stMetric"] {
-        background-color: #262730 !important;
-        border: 1px solid #3b3f4d !important;
+        background-color: #1e293b !important;
+        border: 1px solid #334155 !important;
         border-radius: 8px !important;
         padding: 15px !important;
         text-align: center !important;
     }
     [data-testid="stMetricLabel"] > div {
-        color: #d1d5db !important;
+        color: #94a3b8 !important;
         font-size: 1.15rem !important;
         justify-content: center !important;
     }
     [data-testid="stMetricValue"] > div {
-        color: #60a5fa !important;
+        color: #38bdf8 !important;
         font-size: 2.0rem !important;
         justify-content: center !important;
     }
@@ -1622,7 +1575,7 @@ else:
                     }
                     excel_prod_tab_bytes = build_form_layout_excel(prod_tab_sec, title=f"فرآیند تولید - قطعه {search_code}")
                     st.download_button(
-                        label="📥 دانلود خروجی اکسل این بخش",
+                        label="📥 دانلود خروجی اکسل",
                         data=excel_prod_tab_bytes,
                         file_name=f"production_tab_{search_code}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1661,7 +1614,7 @@ else:
                             
                         excel_pwd_tab_bytes = build_form_layout_excel(powder_tab_sec, title=f"اطلاعات پودر - قطعه {search_code}")
                         st.download_button(
-                            label="📥 دانلود خروجی اکسل این بخش",
+                            label="📥 دانلود خروجی اکسل",
                             data=excel_pwd_tab_bytes,
                             file_name=f"powder_tab_{search_code}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1697,7 +1650,7 @@ else:
                         }
                         excel_qc_tab_bytes = build_form_layout_excel(qc_tab_sec, title=f"کنترل کیفیت - قطعه {search_code}")
                         st.download_button(
-                            label="📥 دانلود خروجی اکسل این بخش",
+                            label="📥 دانلود خروجی اکسل",
                             data=excel_qc_tab_bytes,
                             file_name=f"qc_tab_{search_code}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1747,7 +1700,7 @@ else:
                         }
                         excel_cost_tab_bytes = build_form_layout_excel(cost_tab_sec, title=f"برآورد مالی - قطعه {search_code}")
                         st.download_button(
-                            label="📥 دانلود خروجی اکسل این بخش",
+                            label="📥 دانلود خروجی اکسل",
                             data=excel_cost_tab_bytes,
                             file_name=f"cost_tab_{search_code}.xlsx",
                             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1818,9 +1771,9 @@ else:
 
                 excel_dossier_bytes = build_form_layout_excel(dossier_sections, title=f"شناسنامه پرونده جامع قطعه {search_code}")
                 st.download_button(
-                    label="📥 دانلود خروجی اکسل پرونده جامع این قطعه",
+                    label="📥 دانلود خروجی اکسل",
                     data=excel_dossier_bytes,
-                    file_name=f"part_dossier_form_{search_code}.xlsx",
+                    file_name=f"part_dossier_complete_{search_code}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     key="btn_down_part_full_styled"
                 )
